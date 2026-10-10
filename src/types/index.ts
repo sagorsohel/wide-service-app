@@ -36,3 +36,14 @@ export interface Service {
   reviewCount?: number;
   experience?: string;
 }
+
+export interface UserLocation {
+  address: string;
+  area: string;
+  city: string;
+  latitude?: number;
+  longitude?: number;
+  isCurrentGps?: boolean;
+  updatedAt?: string;
+}
+

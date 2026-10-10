@@ -1,0 +1,653 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Platform,
+  Alert,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  ChevronLeft,
+  Search,
+  MapPin,
+  LocateFixed,
+  X,
+  Layers,
+  Check,
+} from "lucide-react-native";
+import { WebView, WebViewMessageEvent } from "react-native-webview";
+import * as Location from "expo-location";
+import { UserLocation } from "../types";
+import { saveUserLocation, DEFAULT_LOCATION } from "../services/locationStorage";
+
+interface LocationPickerScreenProps {
+  currentLocation?: UserLocation | null;
+  onBack?: () => void;
+  onLocationSelected: (location: UserLocation) => void;
+}
+
+// Major cities across Bangladesh for quick flyTo jumps
+const QUICK_CITIES = [
+  { name: "Dhaka", lat: 23.8103, lng: 90.4125 },
+  { name: "Chittagong", lat: 22.3569, lng: 91.7832 },
+  { name: "Sylhet", lat: 24.8949, lng: 91.8687 },
+  { name: "Rajshahi", lat: 24.3636, lng: 88.6241 },
+  { name: "Khulna", lat: 22.8456, lng: 89.5403 },
+  { name: "Barishal", lat: 22.701, lng: 90.3535 },
+  { name: "Rangpur", lat: 25.7439, lng: 89.2752 },
+  { name: "Comilla", lat: 23.4607, lng: 91.1809 },
+];
+
+/**
+ * Generates interactive in-app Google Maps HTML using Leaflet & free Google Maps tile servers
+ */
+function getMapHtml(initialLat: number, initialLng: number): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #map { width: 100%; height: 100%; overflow: hidden; background: #e5e3df; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    
+    /* Center Pin Container (Uber & Google Maps style with lift & bounce) */
+    .center-pin-wrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .center-pin-wrapper.dragging {
+      transform: translate(-50%, -125%) scale(1.08);
+    }
+    .pin-head {
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.38));
+    }
+    .pin-shadow {
+      width: 14px;
+      height: 6px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 50%;
+      margin-top: 2px;
+      transition: all 0.15s ease-out;
+    }
+    .center-pin-wrapper.dragging .pin-shadow {
+      transform: scale(0.65);
+      opacity: 0.15;
+    }
+
+    /* Google Maps Layer Switcher */
+    .layer-control {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+      display: flex;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+    }
+    .layer-btn {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .layer-btn.active {
+      background: #e0b328;
+      color: #0f172a;
+    }
+
+    /* Loading geocode indicator */
+    .loading-pill {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    .loading-pill.show {
+      display: flex;
+    }
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #e0b328;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Floating instruction badge */
+    .target-hint {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(4px);
+      padding: 6px 11px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Instruction Badge -->
+  <div class="target-hint">
+    <span>📍 Drag map to set pin</span>
+  </div>
+
+  <!-- Google Maps Mode Switcher -->
+  <div class="layer-control">
+    <button id="btn-streets" class="layer-btn active" onclick="switchLayer('streets')">🗺️ Map</button>
+    <button id="btn-satellite" class="layer-btn" onclick="switchLayer('satellite')">🛰️ Satellite</button>
+  </div>
+
+  <!-- Interactive Center Pin (Uber / Google Maps Pin) -->
+  <div id="center-pin" class="center-pin-wrapper">
+    <svg class="pin-head" width="38" height="48" viewBox="0 0 38 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19 0C8.50659 0 0 8.50659 0 19C0 32.25 16.625 46.5 17.375 47.125C17.875 47.5 18.4375 47.75 19 47.75C19.5625 47.75 20.125 47.5 20.625 47.125C21.375 46.5 38 32.25 38 19C38 8.50659 29.4934 0 19 0Z" fill="#e0b328"/>
+      <circle cx="19" cy="18" r="8" fill="#0f172a"/>
+      <circle cx="19" cy="18" r="4.5" fill="#ffffff"/>
+    </svg>
+    <div class="pin-shadow"></div>
+  </div>
+
+  <!-- Loading Geocode Pill -->
+  <div id="loading-pill" class="loading-pill">
+    <div class="spinner"></div>
+    <span>Detecting address...</span>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var currentLat = ${initialLat};
+    var currentLng = ${initialLng};
+    
+    // 100% Free Google Maps Tiles
+    var streetLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '© Google Maps'
+    });
+
+    var satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '© Google Maps'
+    });
+
+    var map = L.map('map', {
+      center: [currentLat, currentLng],
+      zoom: 15,
+      zoomControl: false,
+      layers: [streetLayer]
+    });
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    var pinEl = document.getElementById('center-pin');
+    var loadingEl = document.getElementById('loading-pill');
+    var geocodeTimeout = null;
+
+    function switchLayer(type) {
+      if (type === 'satellite') {
+        map.removeLayer(streetLayer);
+        map.addLayer(satelliteLayer);
+        document.getElementById('btn-satellite').classList.add('active');
+        document.getElementById('btn-streets').classList.remove('active');
+      } else {
+        map.removeLayer(satelliteLayer);
+        map.addLayer(streetLayer);
+        document.getElementById('btn-streets').classList.add('active');
+        document.getElementById('btn-satellite').classList.remove('active');
+      }
+    }
+
+    function notifyParent(data) {
+      var msg = JSON.stringify(data);
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(msg);
+      }
+      if (window.parent && window.parent.postMessage) {
+        window.parent.postMessage(msg, '*');
+      }
+    }
+
+    function reverseGeocode(lat, lng) {
+      loadingEl.classList.add('show');
+      var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1';
+      fetch(url, { headers: { 'Accept-Language': 'en' } })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          loadingEl.classList.remove('show');
+          var address = 'Selected Location';
+          var area = 'My Area';
+          var city = 'Bangladesh';
+          if (data && data.address) {
+            var addr = data.address;
+            area = addr.suburb || addr.neighbourhood || addr.quarter || addr.residential || addr.road || addr.village || 'Selected Area';
+            city = addr.city || addr.town || addr.district || addr.state || 'Bangladesh';
+            var parts = [addr.road, addr.suburb || addr.neighbourhood, addr.city || addr.town, addr.district].filter(Boolean);
+            address = parts.join(', ') || data.display_name.split(',').slice(0, 3).join(', ');
+          }
+          notifyParent({
+            type: 'LOCATION_CHANGED',
+            latitude: lat,
+            longitude: lng,
+            address: address,
+            area: area,
+            city: city
+          });
+        })
+        .catch(function() {
+          loadingEl.classList.remove('show');
+          notifyParent({
+            type: 'LOCATION_CHANGED',
+            latitude: lat,
+            longitude: lng,
+            address: 'Pinpoint (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')',
+            area: 'Pinned Spot',
+            city: 'Bangladesh'
+          });
+        });
+    }
+
+    map.on('movestart', function() {
+      pinEl.classList.add('dragging');
+    });
+
+    map.on('moveend', function() {
+      pinEl.classList.remove('dragging');
+      var center = map.getCenter();
+      clearTimeout(geocodeTimeout);
+      geocodeTimeout = setTimeout(function() {
+        reverseGeocode(center.lat, center.lng);
+      }, 300);
+    });
+
+    map.on('click', function(e) {
+      map.panTo(e.latlng);
+    });
+
+    // Listen to messages from parent (React Native or Web)
+    function handleParentMessage(event) {
+      try {
+        var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data && data.type === 'FLY_TO') {
+          map.flyTo([data.latitude, data.longitude], data.zoom || 16);
+        }
+      } catch(e) {}
+    }
+
+    window.addEventListener('message', handleParentMessage);
+    document.addEventListener('message', handleParentMessage);
+
+    // Initial reverse geocode
+    setTimeout(function() {
+      reverseGeocode(currentLat, currentLng);
+    }, 400);
+  </script>
+</body>
+</html>`;
+}
+
+export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
+  currentLocation,
+  onBack,
+  onLocationSelected,
+}) => {
+  const initialLat = currentLocation?.latitude || DEFAULT_LOCATION.latitude || 23.8103;
+  const initialLng = currentLocation?.longitude || DEFAULT_LOCATION.longitude || 90.4125;
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLoc, setSelectedLoc] = useState<UserLocation>(
+    currentLocation || DEFAULT_LOCATION
+  );
+  const [isDetectingGps, setIsDetectingGps] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const webViewRef = useRef<WebView>(null);
+
+  // Send flyTo command to in-app Google Maps
+  const flyToCoordinates = (lat: number, lng: number, zoom = 16) => {
+    const payload = JSON.stringify({ type: "FLY_TO", latitude: lat, longitude: lng, zoom });
+
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const iframe = document.getElementById("inapp-google-map") as HTMLIFrameElement;
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(payload, "*");
+      }
+    } else if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(
+        `window.postMessage(${JSON.stringify(payload)}, '*'); document.dispatchEvent(new MessageEvent('message', { data: ${JSON.stringify(payload)} })); true;`
+      );
+    }
+  };
+
+  // Listen to messages on Web platform
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const handleWebMessage = (event: MessageEvent) => {
+        try {
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          if (data && data.type === "LOCATION_CHANGED") {
+            setSelectedLoc({
+              address: data.address,
+              area: data.area,
+              city: data.city,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              isCurrentGps: false,
+            });
+          }
+        } catch (e) {}
+      };
+
+      window.addEventListener("message", handleWebMessage);
+      return () => window.removeEventListener("message", handleWebMessage);
+    }
+  }, []);
+
+  // Handle messages on Native WebView
+  const handleNativeMessage = (event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data && data.type === "LOCATION_CHANGED") {
+        setSelectedLoc({
+          address: data.address,
+          area: data.area,
+          city: data.city,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          isCurrentGps: false,
+        });
+      }
+    } catch (e) {}
+  };
+
+  // Live GPS button action
+  const handleDetectCurrentLocation = async () => {
+    setIsDetectingGps(true);
+    try {
+      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            flyToCoordinates(lat, lng, 17);
+            setIsDetectingGps(false);
+          },
+          (err) => {
+            console.warn("Web Geolocation error:", err);
+            Alert.alert("GPS Error", "Could not get current GPS location.");
+            setIsDetectingGps(false);
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+        return;
+      }
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "Please allow location permission to detect your current position.");
+        setIsDetectingGps(false);
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      flyToCoordinates(lat, lng, 17);
+    } catch (err) {
+      console.warn("GPS detection error:", err);
+    } finally {
+      setIsDetectingGps(false);
+    }
+  };
+
+  // Search input geocoding & jump
+  const handleSearchSubmit = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          searchQuery.trim()
+        )}&limit=1`,
+        { headers: { "User-Agent": "WideServiceApp/1.0" } }
+      );
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          const lat = parseFloat(list[0].lat);
+          const lng = parseFloat(list[0].lon);
+          flyToCoordinates(lat, lng, 16);
+          setIsSearching(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Search geocode error:", err);
+    }
+    setIsSearching(false);
+  };
+
+  // Save and continue
+  const handleConfirm = async () => {
+    await saveUserLocation(selectedLoc);
+    onLocationSelected(selectedLoc);
+  };
+
+  const mapHtml = getMapHtml(initialLat, initialLng);
+
+  return (
+    <SafeAreaView className="flex-1 bg-[#e0b328]">
+      {/* Top Header */}
+      <View className="bg-[#e0b328] px-6 pt-2 pb-4">
+        <View className="flex-row items-center justify-between">
+          {onBack ? (
+            <TouchableOpacity
+              onPress={onBack}
+              activeOpacity={0.7}
+              className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+            >
+              <ChevronLeft size={28} color="#0f172a" />
+            </TouchableOpacity>
+          ) : (
+            <View className="w-10 h-10" />
+          )}
+
+          <View className="flex-1 px-2 items-center">
+            <Text
+              className="text-lg font-black text-slate-900 tracking-tight text-center"
+              numberOfLines={1}
+            >
+              Choose On Google Maps
+            </Text>
+            <Text className="text-[11px] font-semibold text-amber-950/70">
+              Free in-app interactive map location picker
+            </Text>
+          </View>
+
+          <View className="w-10 h-10" />
+        </View>
+
+        {/* Floating Search Bar directly above map */}
+        <View className="mt-2 bg-white rounded-2xl border border-slate-200/90 shadow-md flex-row items-center px-4 py-2">
+          <Search size={18} color="#94a3b8" className="mr-2" />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search address, road, area, or city..."
+            placeholderTextColor="#94a3b8"
+            className="flex-1 text-sm font-semibold text-slate-800 py-1"
+            returnKeyType="search"
+            onSubmitEditing={handleSearchSubmit}
+          />
+          {isSearching && (
+            <ActivityIndicator size="small" color="#e0b328" className="mr-1" />
+          )}
+          {searchQuery.length > 0 && !isSearching && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              className="w-6 h-6 rounded-full bg-slate-100 items-center justify-center ml-1"
+            >
+              <X size={13} color="#64748b" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Main Container */}
+      <View className="flex-1 bg-slate-100 rounded-t-[36px] overflow-hidden relative">
+        {/* Quick City Jump Bar */}
+        <View className="bg-white/95 border-b border-slate-200/80 px-4 py-2.5 z-10 flex-row items-center">
+          <Text className="text-[11px] font-bold text-slate-500 mr-2 shrink-0">
+            Quick Jump:
+          </Text>
+          <View className="flex-1 flex-row flex-wrap gap-1.5">
+            {QUICK_CITIES.map((city) => (
+              <TouchableOpacity
+                key={city.name}
+                onPress={() => {
+                  setSearchQuery(city.name);
+                  flyToCoordinates(city.lat, city.lng, 15);
+                }}
+                activeOpacity={0.7}
+                className="bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/90 active:bg-[#e0b328]"
+              >
+                <Text className="text-[11px] font-bold text-amber-950">
+                  {city.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* 100% Free In-App Google Maps Canvas */}
+        <View className="flex-1 relative">
+          {Platform.OS === "web" ? (
+            React.createElement("iframe", {
+              id: "inapp-google-map",
+              title: "In-App Google Maps",
+              srcDoc: mapHtml,
+              style: {
+                width: "100%",
+                height: "100%",
+                border: 0,
+              },
+            })
+          ) : (
+            <WebView
+              ref={webViewRef}
+              originWhitelist={["*"]}
+              source={{ html: mapHtml }}
+              onMessage={handleNativeMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              style={{ flex: 1 }}
+            />
+          )}
+
+          {/* Floating Live GPS Target Button on Map (Bottom-Right) */}
+          <TouchableOpacity
+            onPress={handleDetectCurrentLocation}
+            disabled={isDetectingGps}
+            activeOpacity={0.85}
+            className="absolute bottom-6 right-5 w-13 h-13 rounded-full bg-white border border-slate-200 shadow-xl items-center justify-center active:bg-slate-50 z-20"
+            style={{ elevation: 6 }}
+          >
+            {isDetectingGps ? (
+              <ActivityIndicator size="small" color="#e0b328" />
+            ) : (
+              <LocateFixed size={24} color="#0f172a" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom Selected Location Preview & Confirmation Sheet */}
+        <View className="bg-white border-t border-slate-200 px-6 pt-4 pb-6 shadow-2xl z-30">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-1 pr-3">
+              <View className="flex-row items-center mb-0.5">
+                <MapPin size={14} color="#e0b328" className="mr-1" />
+                <Text className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Selected Location (In-App Pin)
+                </Text>
+              </View>
+              <Text
+                className="text-base font-black text-slate-900 tracking-tight"
+                numberOfLines={1}
+              >
+                {selectedLoc.address}
+              </Text>
+              <Text className="text-xs font-semibold text-slate-500 mt-0.5">
+                {selectedLoc.area}, {selectedLoc.city}
+              </Text>
+            </View>
+
+            <View className="bg-amber-100/90 px-3 py-1.5 rounded-full border border-amber-300">
+              <Text className="text-xs font-black text-amber-950 font-mono">
+                {selectedLoc.latitude ? `${selectedLoc.latitude.toFixed(3)}°N` : "GPS"}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleConfirm}
+            activeOpacity={0.88}
+            className="w-full bg-[#e0b328] py-4 rounded-2xl shadow-lg shadow-amber-500/30 items-center justify-center active:opacity-90 flex-row"
+          >
+            <Check size={20} color="#0f172a" className="mr-2" />
+            <Text className="text-slate-900 text-base font-black tracking-wide">
+              Confirm & Set Location
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+};

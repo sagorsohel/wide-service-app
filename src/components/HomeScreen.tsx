@@ -18,16 +18,20 @@ import {
   Clock,
   Settings,
 } from "lucide-react-native";
-import { Category, Service } from "../types";
+import { Category, Service, UserLocation } from "../types";
 import { fetchCategories } from "../config/api";
 
 interface HomeScreenProps {
+  userLocation?: UserLocation | null;
+  onChangeLocation?: () => void;
   onSelectService: (service: Service) => void;
   onSelectCategory: (category: Category) => void;
   onBackToSplash?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
+  userLocation,
+  onChangeLocation,
   onSelectCategory,
   onBackToSplash,
 }) => {
@@ -78,18 +82,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       >
         {/* Top Header: Location & Notification */}
         <View className="px-6 pt-4 pb-2 flex-row items-center justify-between">
-          <View>
+          <View className="flex-1 mr-3">
             <TouchableOpacity
-              onPress={onBackToSplash}
+              onPress={onChangeLocation || onBackToSplash}
               activeOpacity={0.7}
               className="flex-row items-center space-x-1"
             >
-              <Text className="text-xs text-slate-400 font-medium">My Location</Text>
-              <Text className="text-primary text-xs font-bold">▾</Text>
+              <Text className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                My Location
+              </Text>
+              <Text className="text-primary text-xs font-bold ml-1">▾</Text>
             </TouchableOpacity>
-            <Text className="text-xl font-black text-slate-900 tracking-tight">
-              Dhaka, Bangladesh
-            </Text>
+            <TouchableOpacity
+              onPress={onChangeLocation || onBackToSplash}
+              activeOpacity={0.8}
+            >
+              <Text
+                className="text-xl font-black text-slate-900 tracking-tight"
+                numberOfLines={1}
+              >
+                {userLocation ? `${userLocation.area}, ${userLocation.city}` : "Select Location"}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Notification Bell Badge */}
