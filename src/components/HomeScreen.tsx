@@ -13,9 +13,6 @@ import {
   Search,
   Bell,
   Home,
-  Compass,
-  MessageCircle,
-  Clock,
   Settings,
 } from "lucide-react-native";
 import { Category, Service, UserLocation } from "../types";
@@ -39,7 +36,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"home" | "discover" | "chat" | "history" | "setting">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "setting">("home");
 
   // Load Categories from Backend API
   const loadData = async () => {
@@ -186,75 +183,64 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </ScrollView>
       )}
 
-      {/* Bottom Navigation Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 py-3 px-6 flex-row items-center justify-between shadow-2xl">
+      {/* Elevated Floating Bottom Navigation Bar (Home & Settings Only) */}
+      <View
+        className="absolute bottom-5 left-8 right-8 bg-white/95 backdrop-blur-md py-2 px-4 rounded-full flex-row items-center justify-around border border-slate-200/90 shadow-xl"
+        style={{
+          elevation: 10,
+          shadowColor: "#0f172a",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.15,
+          shadowRadius: 14,
+        }}
+      >
+        {/* Home Tab */}
         <TouchableOpacity
           onPress={() => setActiveTab("home")}
-          className="items-center"
+          activeOpacity={0.8}
+          className={`flex-row items-center py-2 px-5 rounded-full ${
+            activeTab === "home"
+              ? "bg-amber-100/90 border border-amber-300"
+              : "bg-transparent"
+          }`}
         >
-          <Home size={20} color={activeTab === "home" ? "#e0b328" : "#94a3b8"} />
+          <Home
+            size={19}
+            color={activeTab === "home" ? "#b45309" : "#64748b"}
+          />
           <Text
-            className={`text-[10px] font-bold mt-1 ${
-              activeTab === "home" ? "text-primary" : "text-slate-400"
+            className={`text-xs ml-2 ${
+              activeTab === "home"
+                ? "text-amber-950 font-black"
+                : "text-slate-500 font-bold"
             }`}
           >
             Home
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => setActiveTab("discover")}
-          className="items-center"
-        >
-          <Compass size={20} color={activeTab === "discover" ? "#e0b328" : "#94a3b8"} />
-          <Text
-            className={`text-[10px] font-bold mt-1 ${
-              activeTab === "discover" ? "text-primary" : "text-slate-400"
-            }`}
-          >
-            Discover
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveTab("chat")}
-          className="items-center"
-        >
-          <MessageCircle size={20} color={activeTab === "chat" ? "#e0b328" : "#94a3b8"} />
-          <Text
-            className={`text-[10px] font-bold mt-1 ${
-              activeTab === "chat" ? "text-primary" : "text-slate-400"
-            }`}
-          >
-            Chat
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveTab("history")}
-          className="items-center"
-        >
-          <Clock size={20} color={activeTab === "history" ? "#e0b328" : "#94a3b8"} />
-          <Text
-            className={`text-[10px] font-bold mt-1 ${
-              activeTab === "history" ? "text-primary" : "text-slate-400"
-            }`}
-          >
-            History
-          </Text>
-        </TouchableOpacity>
-
+        {/* Settings Tab */}
         <TouchableOpacity
           onPress={() => setActiveTab("setting")}
-          className="items-center"
+          activeOpacity={0.8}
+          className={`flex-row items-center py-2 px-5 rounded-full ${
+            activeTab === "setting"
+              ? "bg-amber-100/90 border border-amber-300"
+              : "bg-transparent"
+          }`}
         >
-          <Settings size={20} color={activeTab === "setting" ? "#e0b328" : "#94a3b8"} />
+          <Settings
+            size={19}
+            color={activeTab === "setting" ? "#b45309" : "#64748b"}
+          />
           <Text
-            className={`text-[10px] font-bold mt-1 ${
-              activeTab === "setting" ? "text-primary" : "text-slate-400"
+            className={`text-xs ml-2 ${
+              activeTab === "setting"
+                ? "text-amber-950 font-black"
+                : "text-slate-500 font-bold"
             }`}
           >
-            Setting
+            Settings
           </Text>
         </TouchableOpacity>
       </View>

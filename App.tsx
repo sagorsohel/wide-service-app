@@ -26,12 +26,25 @@ export default function App() {
     });
   }, []);
 
+  // When user taps Get Started on splash:
+  // If location is already set once, go straight to home! Never ask again!
+  const handleGetStarted = async () => {
+    const loc = userLocation || (await getUserLocation());
+    if (loc) {
+      setUserLocation(loc);
+      setCurrentScreen("home");
+    } else {
+      // Only first-time users without any saved location will be asked
+      setCurrentScreen("location");
+    }
+  };
+
   return (
     <>
       <StatusBar style="dark" />
 
       {currentScreen === "splash" ? (
-        <SplashScreen onGetStarted={() => setCurrentScreen("location")} />
+        <SplashScreen onGetStarted={handleGetStarted} />
       ) : currentScreen === "location" ? (
         <LocationPickerScreen
           currentLocation={userLocation}
