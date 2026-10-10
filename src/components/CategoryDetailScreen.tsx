@@ -240,19 +240,19 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
                   className="bg-white rounded-3xl p-3 border border-slate-100 shadow-sm flex-row space-x-3.5 mb-3"
                 >
                   {/* Service Photo with Favorite Heart */}
-                  <View className="relative w-28 h-28 rounded-2xl overflow-hidden bg-slate-100">
+                  <View className="relative w-24 h-24 rounded-2xl overflow-hidden bg-amber-50/40 items-center justify-center p-2 border border-slate-100">
                     <Image
                       source={{ uri: imageUri }}
-                      className="w-full h-full"
-                      resizeMode="cover"
+                      className="w-16 h-16"
+                      resizeMode="contain"
                     />
-                    <View className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-md items-center justify-center shadow-xs">
-                      <Text className="text-rose-500 text-xs">♥</Text>
+                    <View className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white/90 items-center justify-center shadow-xs">
+                      <Text className="text-rose-500 text-[10px]">♥</Text>
                     </View>
                   </View>
 
                   {/* Service Details */}
-                  <View className="flex-1 justify-between py-1 pr-1">
+                  <View className="flex-1 justify-between py-0.5 pr-1">
                     <View>
                       <View className="flex-row items-center justify-between">
                         <Text
@@ -288,17 +288,17 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
                     </View>
 
                     {/* Bottom Pricing & Address */}
-                    <View className="flex-row items-center justify-between pt-2 border-t border-slate-50 mt-1">
-                      <Text className="text-sm font-black text-slate-900">
-                        {service.price || "$34.00 / Hr"}
+                    <View className="flex-row items-center justify-between pt-1.5 border-t border-slate-100 mt-1">
+                      <Text className="text-xs font-black text-amber-700">
+                        {service.price || "৳৫০০ - ৳২,০০০"}
                       </Text>
-                      <View className="flex-row items-center space-x-1">
-                        <Text className="text-slate-400 text-xs">📍</Text>
+                      <View className="flex-row items-center max-w-[160px]">
+                        <Text className="text-slate-400 text-xs mr-1">📍</Text>
                         <Text
-                          className="text-[11px] font-semibold text-slate-500 max-w-[80px]"
+                          className="text-[10px] font-semibold text-slate-500"
                           numberOfLines={1}
                         >
-                          {service.address || "2.4 km"}
+                          {service.address}
                         </Text>
                       </View>
                     </View>
