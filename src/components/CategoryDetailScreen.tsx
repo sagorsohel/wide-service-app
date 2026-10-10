@@ -9,6 +9,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ChevronLeft } from "lucide-react-native";
 import { Category, Subcategory, Service } from "../types";
 import { fetchSubcategories, fetchServices } from "../config/api";
 
@@ -61,153 +62,74 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#e0b328"
-          />
-        }
-      >
-        {/* Top Header with Back Button */}
-        <View className="px-6 pt-4 pb-3 flex-row items-center justify-between">
+    <SafeAreaView className="flex-1 bg-[#e0b328]">
+      {/* Top Header with #e0b328 Color & Sleek Back Icon */}
+      <View className="bg-[#e0b328] px-6 pt-2 pb-5">
+        <View className="flex-row items-center justify-between">
           <TouchableOpacity
             onPress={onBack}
-            activeOpacity={0.8}
-            className="w-10 h-10 rounded-full bg-white border border-slate-200/80 shadow-xs items-center justify-center"
+            activeOpacity={0.7}
+            className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           >
-            <Text className="text-slate-800 text-lg font-bold">‹</Text>
+            <ChevronLeft size={28} color="#0f172a" />
           </TouchableOpacity>
 
-          <View className="flex-1 px-4 items-center">
+          <View className="flex-1 px-2 items-center">
             <Text
-              className="text-base font-extrabold text-slate-900 tracking-tight text-center"
+              className="text-lg font-black text-slate-900 tracking-tight text-center"
               numberOfLines={1}
             >
               {category.name}
-            </Text>
-            <Text className="text-[11px] text-slate-400 font-medium">
-              Category Overview
             </Text>
           </View>
 
           {/* Spacer */}
           <View className="w-10 h-10" />
         </View>
+      </View>
 
-        {/* Category Hero Banner */}
-        <View className="px-6 my-2">
-          <View className="relative w-full h-36 rounded-3xl overflow-hidden bg-slate-200 shadow-sm border border-slate-100">
-            {category.image ? (
-              <Image
-                source={{ uri: category.image }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            ) : (
-              <View className="w-full h-full bg-blue-900/80 items-center justify-center">
-                <Text className="text-4xl">🛠️</Text>
-              </View>
-            )}
-            {/* Gradient Overlay */}
-            <View className="absolute inset-0 bg-black/40 justify-end p-4">
-              <View className="flex-row items-center justify-between">
-                <View>
-                  <Text className="text-white text-lg font-black tracking-tight">
-                    {category.name}
-                  </Text>
-                  <Text className="text-white/80 text-xs font-medium">
-                    Verified technicians & expert partners
-                  </Text>
-                </View>
-                <View className="bg-primary px-3 py-1 rounded-full">
-                  <Text className="text-white text-[11px] font-bold">
-                    {services.length} Services
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
+      {/* Curvy Content Container matching reference screenshot */}
+      <View className="flex-1 bg-slate-50 rounded-t-[36px] overflow-hidden">
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#e0b328"
+            />
+          }
+        >
 
-        {/* Subcategories Section (Shown if subcategories exist) */}
+        
+       
+
+        {/* Subcategories Section (2-Column Grid matching Category Cards: flex-col, col2) */}
         {subcategories.length > 0 && (
-          <View className="mt-4 mb-6">
-            <View className="px-6 flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center space-x-2">
-                <Text className="text-lg font-black text-slate-900 tracking-tight">
-                  Subcategories
-                </Text>
-                <View className="bg-amber-100/70 px-2 py-0.5 rounded-full border border-amber-200">
-                  <Text className="text-[11px] font-bold text-amber-900">
-                    {subcategories.length}
-                  </Text>
-                </View>
-              </View>
+          <View className="px-6 mt-4 mb-6">
+            <View className="flex-row items-center justify-between mb-3.5">
+              
 
               {selectedSubcategoryId !== null && (
                 <TouchableOpacity
                   onPress={() => setSelectedSubcategoryId(null)}
                   activeOpacity={0.7}
-                  className="bg-primary/10 px-2.5 py-1 rounded-full border border-primary/30"
+                  className="bg-primary/15 px-3 py-1 rounded-full border border-primary/30"
                 >
                   <Text className="text-xs font-bold text-amber-800">
-                    ✕ Show All
+                    ✕ Reset Filter
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* Subcategory Cards Carousel / Horizontal Scroll */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
-            >
-              {/* "All" Subcategory Pill */}
-              <TouchableOpacity
-                onPress={() => setSelectedSubcategoryId(null)}
-                activeOpacity={0.8}
-                className={`w-36 rounded-2xl p-3 border shadow-xs items-center justify-center ${
-                  selectedSubcategoryId === null
-                    ? "bg-primary border-primary shadow-amber-500/20"
-                    : "bg-white border-slate-200/80"
-                }`}
-              >
-                <Text
-                  className={`text-2xl mb-1 ${
-                    selectedSubcategoryId === null ? "text-white" : "text-slate-700"
-                  }`}
-                >
-                  ✨
-                </Text>
-                <Text
-                  className={`text-xs font-bold text-center ${
-                    selectedSubcategoryId === null ? "text-white" : "text-slate-800"
-                  }`}
-                  numberOfLines={1}
-                >
-                  All Services
-                </Text>
-                <Text
-                  className={`text-[10px] mt-0.5 font-medium ${
-                    selectedSubcategoryId === null ? "text-white/80" : "text-slate-400"
-                  }`}
-                >
-                  Full Category
-                </Text>
-              </TouchableOpacity>
-
-              {/* Dynamic Subcategory Cards */}
+            {/* 2-Column Grid (Category Card Style: flex-col, col 2) */}
+            <View className="flex-row flex-wrap justify-between">
               {subcategories.map((subCat) => {
                 const isSelected = selectedSubcategoryId === subCat.id;
-                const subCatImage =
-                  subCat.image ||
-                  "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400";
+                const subCatImage = subCat.image;
 
                 return (
                   <TouchableOpacity
@@ -215,46 +137,46 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
                     onPress={() =>
                       setSelectedSubcategoryId(isSelected ? null : subCat.id)
                     }
-                    activeOpacity={0.85}
-                    className={`w-40 rounded-2xl p-2.5 border shadow-xs bg-white ${
+                    activeOpacity={0.75}
+                    className={`w-[48%] rounded-[6px] border py-3 px-3 items-center justify-center mb-3.5 shadow-2xs ${
                       isSelected
-                        ? "border-2 border-primary bg-amber-50/40 shadow-md shadow-amber-500/10"
-                        : "border-slate-200/80"
+                        ? "bg-amber-50/70 border-primary shadow-xs"
+                        : "bg-white border-slate-200/90 active:bg-slate-50"
                     }`}
                   >
-                    {/* Subcategory Image */}
-                    <View className="relative w-full h-20 rounded-xl overflow-hidden bg-slate-100 mb-2">
-                      <Image
-                        source={{ uri: subCatImage }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
+                    {/* Top: Admin-uploaded Transparent PNG Image */}
+                    <View className="w-14 h-14 mb-2.5 items-center justify-center relative">
+                      {subCatImage ? (
+                        <Image
+                          source={{ uri: subCatImage }}
+                          className="w-12 h-12"
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View className="w-12 h-12 rounded-xl bg-amber-50 items-center justify-center">
+                          <Text className="text-2xl">🛠️</Text>
+                        </View>
+                      )}
                       {isSelected && (
-                        <View className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full bg-primary">
-                          <Text className="text-[9px] font-bold text-white">
-                            Active
-                          </Text>
+                        <View className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary items-center justify-center">
+                          <Text className="text-[9px] font-black text-white">✓</Text>
                         </View>
                       )}
                     </View>
 
-                    {/* Subcategory Name */}
+                    {/* Bottom: Subcategory Name */}
                     <Text
-                      className={`text-xs font-bold ${
-                        isSelected ? "text-amber-900" : "text-slate-800"
+                      className={`text-xs sm:text-sm font-semibold text-center tracking-tight ${
+                        isSelected ? "text-amber-950 font-bold" : "text-slate-800"
                       }`}
                       numberOfLines={2}
                     >
                       {subCat.name}
                     </Text>
-
-                    <Text className="text-[10px] text-slate-400 mt-1 font-medium">
-                      {isSelected ? "● Filtered" : "Tap to view"}
-                    </Text>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
         )}
 
@@ -387,6 +309,7 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
           </View>
         )}
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
