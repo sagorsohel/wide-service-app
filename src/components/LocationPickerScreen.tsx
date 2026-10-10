@@ -168,6 +168,50 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       gap: 5px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
+
+    /* Beautiful Leaflet Zoom Controls (positioned with spacing above GPS button) */
+    .leaflet-control-zoom {
+      border: none !important;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
+      border-radius: 14px !important;
+      overflow: hidden !important;
+      margin-right: 16px !important;
+      margin-bottom: 96px !important; /* Lifts zoom controls way above the GPS button */
+      background: #ffffff !important;
+      border: 1.5px solid #e2e8f0 !important;
+    }
+    .leaflet-control-zoom a {
+      width: 40px !important;
+      height: 40px !important;
+      line-height: 40px !important;
+      font-size: 20px !important;
+      font-weight: 800 !important;
+      color: #0f172a !important;
+      background: #ffffff !important;
+      border-bottom: 1px solid #f1f5f9 !important;
+      transition: all 0.15s ease !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .leaflet-control-zoom a:last-child {
+      border-bottom: none !important;
+    }
+    .leaflet-control-zoom a:hover, .leaflet-control-zoom a:active {
+      background: #fefce8 !important;
+      color: #b45309 !important;
+    }
+
+    /* Subtle attribution in bottom left */
+    .leaflet-control-attribution {
+      background: rgba(255, 255, 255, 0.75) !important;
+      backdrop-filter: blur(4px) !important;
+      border-radius: 6px !important;
+      padding: 1px 6px !important;
+      font-size: 9px !important;
+      color: #64748b !important;
+      margin: 4px !important;
+    }
   </style>
 </head>
 <body>
@@ -223,7 +267,13 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       layers: [streetLayer]
     });
 
+    // Clean zoom control positioned nicely on bottomright
     L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Place attribution in bottom left to keep bottom right clean
+    if (map.attributionControl) {
+      map.attributionControl.setPosition('bottomleft');
+    }
 
     var pinEl = document.getElementById('center-pin');
     var loadingEl = document.getElementById('loading-pill');
@@ -592,19 +642,33 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             />
           )}
 
-          {/* Floating Live GPS Target Button on Map (Bottom-Right) */}
+          {/* Floating Highlighted Live GPS Button on Map (Bottom-Right) */}
           <TouchableOpacity
             onPress={handleDetectCurrentLocation}
             disabled={isDetectingGps}
-            activeOpacity={0.85}
-            className="absolute bottom-6 right-5 w-13 h-13 rounded-full bg-white border border-slate-200 shadow-xl items-center justify-center active:bg-slate-50 z-20"
-            style={{ elevation: 6 }}
+            activeOpacity={0.82}
+            className="absolute bottom-5 right-4 z-30 flex-row items-center bg-white pl-3.5 pr-4 py-2.5 rounded-full border-2 border-[#e0b328] shadow-2xl active:scale-95"
+            style={{
+              elevation: 9,
+              shadowColor: "#000000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.28,
+              shadowRadius: 10,
+            }}
           >
-            {isDetectingGps ? (
-              <ActivityIndicator size="small" color="#e0b328" />
-            ) : (
-              <LocateFixed size={24} color="#0f172a" />
-            )}
+            {/* Glowing Target Icon Badge */}
+            <View className="w-8 h-8 rounded-full bg-amber-500/15 items-center justify-center mr-2 border border-amber-300">
+              {isDetectingGps ? (
+                <ActivityIndicator size="small" color="#b45309" />
+              ) : (
+                <LocateFixed size={18} color="#b45309" />
+              )}
+            </View>
+
+            {/* Clear, Prominent Label */}
+            <Text className="text-xs font-black text-slate-900 tracking-tight">
+              {isDetectingGps ? "Finding GPS..." : "My Location"}
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -20,6 +20,7 @@ import {
 } from "lucide-react-native";
 import { Category, Service, UserLocation } from "../types";
 import { fetchCategories } from "../config/api";
+import { SettingsScreen } from "./SettingsScreen";
 
 interface HomeScreenProps {
   userLocation?: UserLocation | null;
@@ -69,17 +70,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   return (
     <SafeAreaView className="flex-1 bg-[#f8fafc]">
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#e0b328"
-          />
-        }
-      >
+      {activeTab === "setting" ? (
+        <SettingsScreen
+          userLocation={userLocation}
+          onChangeLocation={onChangeLocation || onBackToSplash || (() => {})}
+        />
+      ) : (
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#e0b328"
+            />
+          }
+        >
         {/* Top Header: Location & Notification */}
         <View className="px-6 pt-4 pb-2 flex-row items-center justify-between">
           <View className="flex-1 mr-3">
@@ -177,6 +184,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
         </View>
       </ScrollView>
+      )}
 
       {/* Bottom Navigation Bar */}
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 py-3 px-6 flex-row items-center justify-between shadow-2xl">
