@@ -15,6 +15,7 @@ import { ChevronLeft, MapPin, Navigation } from "lucide-react-native";
 import { Category, Subcategory, Service, UserLocation } from "../types";
 import { fetchSubcategories, fetchServices } from "../config/api";
 import { ServiceCard } from "./ServiceCard";
+import { NoServicesEmptyState } from "./NoServicesEmptyState";
 
 const RADIUS_OPTIONS = [
   { label: "All Distance", value: null },
@@ -453,15 +454,13 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
             ))}
           </View>
         ) : services.length === 0 ? (
-          <View className="py-16 px-6 items-center justify-center">
-            <Text className="text-3xl mb-2">🔍</Text>
-            <Text className="text-sm font-bold text-slate-700">
-              No services found
-            </Text>
-            <Text className="text-xs text-slate-400 mt-1 text-center">
-              There are currently no services listed under this subcategory.
-            </Text>
-          </View>
+          <NoServicesEmptyState
+            selectedRadius={selectedRadius}
+            onClearRadius={() => setSelectedRadius(null)}
+            onRefresh={onRefresh}
+            categoryName={category.name}
+            userArea={userLocation?.area}
+          />
         ) : (
           <View className="px-6 mb-20">
             {services.map((service) => (
