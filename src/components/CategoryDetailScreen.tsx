@@ -9,13 +9,22 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft } from "lucide-react-native";
-import { Category, Subcategory, Service } from "../types";
+import { ChevronLeft, MapPin, Navigation } from "lucide-react-native";
+import { Category, Subcategory, Service, UserLocation } from "../types";
 import { fetchSubcategories, fetchServices } from "../config/api";
 import { ServiceCard } from "./ServiceCard";
 
+const RADIUS_OPTIONS = [
+  { label: "All Distance", value: null },
+  { label: "Within 1 km", value: 1 },
+  { label: "Within 2 km", value: 2 },
+  { label: "Within 5 km", value: 5 },
+  { label: "Within 10 km", value: 10 },
+];
+
 interface CategoryDetailScreenProps {
   category: Category;
+  userLocation?: UserLocation | null;
   onBack: () => void;
   onSelectSubcategory: (subcategory: Subcategory) => void;
   onSelectService: (service: Service) => void;
@@ -23,22 +32,24 @@ interface CategoryDetailScreenProps {
 
 export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
   category,
+  userLocation,
   onBack,
   onSelectSubcategory,
   onSelectService,
 }) => {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [selectedRadius, setSelectedRadius] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load subcategories and all services for this category
-  const loadCategoryData = async () => {
+  // Load subcategories and all services for this category ordered by proximity
+  const loadCategoryData = async (radius: number | null = selectedRadius) => {
     try {
       setLoading(true);
       const [subCats, srvs] = await Promise.all([
         fetchSubcategories(category.id),
-        fetchServices(category.id),
+        fetchServices(category.id, undefined, userLocation, radius || undefined),
       ]);
       setSubcategories(subCats);
       setServices(srvs);
@@ -51,12 +62,12 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
   };
 
   useEffect(() => {
-    loadCategoryData();
-  }, [category.id]);
+    loadCategoryData(selectedRadius);
+  }, [category.id, selectedRadius, userLocation?.latitude, userLocation?.longitude]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadCategoryData();
+    loadCategoryData(selectedRadius);
   };
 
   return (
@@ -146,7 +157,53 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
           </View>
         )}
 
-       
+        {/* Location-Based Proximity & Radius Filter Bar */}
+        <View className="px-6 mb-3">
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center flex-1 mr-2">
+              <Navigation size={14} color="#d97706" />
+              <Text className="text-xs font-black text-slate-800 tracking-tight ml-1.5" numberOfLines={1}>
+                {userLocation?.area ? `Services near ${userLocation.area}` : "Services near you"}
+              </Text>
+            </View>
+            <View className="bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
+              <Text className="text-[10px] font-extrabold text-amber-900">
+                ⚡ Closest First
+              </Text>
+            </View>
+          </View>
+
+          {/* Circle Radius Filter Chips (All, < 1 km, < 2 km, < 5 km, < 10 km) */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingVertical: 4 }}
+          >
+            {RADIUS_OPTIONS.map((opt) => {
+              const isSelected = selectedRadius === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.label}
+                  activeOpacity={0.75}
+                  onPress={() => setSelectedRadius(opt.value)}
+                  className={`mr-2 px-3.5 py-1.5 rounded-full border flex-row items-center ${
+                    isSelected
+                      ? "bg-slate-900 border-slate-900 shadow-2xs"
+                      : "bg-white border-slate-200/90 active:bg-slate-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold ${
+                      isSelected ? "text-white" : "text-slate-600"
+                    }`}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {/* Loading Indicator */}
         {loading && (

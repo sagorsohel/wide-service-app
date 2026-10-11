@@ -63,12 +63,14 @@ export default function App() {
         <SubcategoryDetailScreen
           category={selectedCategory}
           subcategory={selectedSubcategory}
+          userLocation={userLocation}
           onBack={() => setSelectedSubcategory(null)}
           onSelectService={(srv) => setSelectedService(srv)}
         />
       ) : selectedCategory ? (
         <CategoryDetailScreen
           category={selectedCategory}
+          userLocation={userLocation}
           onBack={() => {
             setSelectedCategory(null);
             setSelectedSubcategory(null);

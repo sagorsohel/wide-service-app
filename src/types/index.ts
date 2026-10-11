@@ -35,6 +35,9 @@ export interface Service {
   rating?: number;
   reviewCount?: number;
   experience?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  distanceKm?: number | null;
 }
 
 export interface UserLocation {

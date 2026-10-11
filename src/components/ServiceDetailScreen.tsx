@@ -177,9 +177,20 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                   <MapPin size={16} color="#64748b" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-xs font-bold text-slate-800">
-                     Location
-                  </Text>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs font-bold text-slate-800">
+                      Location
+                    </Text>
+                    {service.distanceKm !== undefined && service.distanceKm !== null && (
+                      <View className="bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        <Text className="text-[10px] font-black text-emerald-700">
+                          {service.distanceKm < 1
+                            ? `⚡ ${Math.round(service.distanceKm * 1000)}m away`
+                            : `📍 ${service.distanceKm.toFixed(1)} km away`}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text className="text-xs text-slate-500 font-medium mt-0.5 leading-relaxed">
                     {service.address}
                   </Text>

@@ -1,6 +1,7 @@
 import { Platform, NativeModules } from "react-native";
 import Constants from "expo-constants";
-import { Category, Subcategory, Service } from "../types";
+import { Category, Subcategory, Service, UserLocation } from "../types";
+import { sortServicesByDistance } from "../utils/distance";
 
 /**
  * Collects all candidate backend base URLs across any network:
@@ -225,12 +226,24 @@ export async function fetchSubcategories(categoryId: number): Promise<Subcategor
   return [];
 }
 
-// Fetch services from Backend API across any network
-export async function fetchServices(categoryId?: number, subcategoryId?: number): Promise<Service[]> {
+// Fetch services from Backend API across any network sorted by distance from user location
+export async function fetchServices(
+  categoryId?: number,
+  subcategoryId?: number,
+  userLocation?: UserLocation | null,
+  radiusKm?: number
+): Promise<Service[]> {
   try {
     const params = new URLSearchParams();
     if (categoryId) params.append("categoryId", String(categoryId));
     if (subcategoryId) params.append("subcategoryId", String(subcategoryId));
+    if (userLocation?.latitude != null && userLocation?.longitude != null) {
+      params.append("lat", String(userLocation.latitude));
+      params.append("lng", String(userLocation.longitude));
+    }
+    if (radiusKm) {
+      params.append("radiusKm", String(radiusKm));
+    }
 
     const endpoint = params.toString() ? `/services?${params.toString()}` : `/services`;
     const res = await smartFetch(endpoint);
@@ -238,13 +251,14 @@ export async function fetchServices(categoryId?: number, subcategoryId?: number)
     if (res.ok) {
       const json = await res.json();
       if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-        return json.data.map((srv: any, index: number) => ({
+        const mapped = json.data.map((srv: any, index: number) => ({
           ...srv,
           price: srv.price || (index % 2 === 0 ? "$34.00 / Hr" : "$28.00 / Hr"),
           rating: srv.rating || 4.9,
           reviewCount: srv.reviewCount || 200 - index * 20,
           experience: srv.experience || "10-year Experience",
         }));
+        return sortServicesByDistance(mapped, userLocation);
       }
     }
   } catch (err) {
@@ -258,5 +272,9 @@ export async function fetchServices(categoryId?: number, subcategoryId?: number)
   if (subcategoryId) {
     filtered = filtered.filter((s) => s.subcategoryId === subcategoryId);
   }
-  return filtered;
+  const sorted = sortServicesByDistance(filtered, userLocation);
+  if (radiusKm) {
+    return sorted.filter((s) => s.distanceKm != null && s.distanceKm <= radiusKm);
+  }
+  return sorted;
 }

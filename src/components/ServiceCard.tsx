@@ -54,15 +54,39 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
           {service.name}
         </Text>
 
-        {/* Business Name with Verified Indicator */}
-        <View className="flex-row items-center mb-1">
+        {/* Business Name with Verified Indicator & Distance Badge */}
+        <View className="flex-row items-center justify-between mb-1">
           <Text
-            className="text-xs font-bold text-amber-900/90 flex-1"
+            className="text-xs font-bold text-amber-900/90 flex-1 mr-1.5"
             numberOfLines={1}
           >
             {service.businessName}
           </Text>
-         
+          {service.distanceKm !== undefined && service.distanceKm !== null && (
+            <View
+              className={`px-2 py-0.5 rounded-full flex-row items-center shrink-0 ${
+                service.distanceKm <= 1
+                  ? "bg-emerald-50 border border-emerald-200"
+                  : service.distanceKm <= 3
+                  ? "bg-amber-50 border border-amber-200"
+                  : "bg-slate-100 border border-slate-200"
+              }`}
+            >
+              <Text
+                className={`text-[10px] font-black ${
+                  service.distanceKm <= 1
+                    ? "text-emerald-700"
+                    : service.distanceKm <= 3
+                    ? "text-amber-700"
+                    : "text-slate-600"
+                }`}
+              >
+                {service.distanceKm < 1
+                  ? `⚡ ${Math.round(service.distanceKm * 1000)}m`
+                  : `📍 ${service.distanceKm.toFixed(1)} km`}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Location / Address */}

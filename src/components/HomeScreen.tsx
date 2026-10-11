@@ -14,9 +14,11 @@ import {
   Bell,
   Home,
   Settings,
+  Navigation,
 } from "lucide-react-native";
 import { Category, Service, UserLocation } from "../types";
-import { fetchCategories } from "../config/api";
+import { fetchCategories, fetchServices } from "../config/api";
+import { ServiceCard } from "./ServiceCard";
 import { SettingsScreen } from "./SettingsScreen";
 
 interface HomeScreenProps {
@@ -31,20 +33,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   userLocation,
   onChangeLocation,
   onSelectCategory,
+  onSelectService,
   onBackToSplash,
 }) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "setting">("home");
 
-  // Load Categories from Backend API
+  // Load Categories & Location-Sorted Services from Backend API
   const loadData = async () => {
     try {
-      const cats = await fetchCategories();
+      const [cats, srvs] = await Promise.all([
+        fetchCategories(),
+        fetchServices(undefined, undefined, userLocation),
+      ]);
       setCategories(cats);
+      setServices(srvs);
     } catch (err) {
-      console.warn("Failed loading categories:", err);
+      console.warn("Failed loading home data:", err);
     } finally {
       setRefreshing(false);
     }
@@ -52,7 +60,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [userLocation?.latitude, userLocation?.longitude]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -63,6 +71,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const filteredCategories = categories.filter((c) => {
     if (!searchQuery) return true;
     return c.name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  // Filter services by search
+  const filteredServices = services.filter((s) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      s.name.toLowerCase().includes(q) ||
+      s.businessName.toLowerCase().includes(q) ||
+      (s.categoryName && s.categoryName.toLowerCase().includes(q)) ||
+      (s.subcategoryName && s.subcategoryName.toLowerCase().includes(q)) ||
+      (s.address && s.address.toLowerCase().includes(q))
+    );
   });
 
   return (
@@ -140,9 +161,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </View>
 
         {/* Categories Section - Exactly 2 Columns with Admin Name & Admin Image */}
-        <View className="px-6 mb-24">
-          
-
+        <View className="px-6 mb-5">
           {/* 2-Column Smart Cards Grid matching screenshot style */}
           <View className="flex-row flex-wrap justify-between">
             {filteredCategories.map((cat) => {
@@ -180,6 +199,39 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             })}
           </View>
         </View>
+
+        {/* Nearby Services Section - Location Based (Closest First) */}
+        {filteredServices.length > 0 && (
+          <View className="px-6 mb-28">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center flex-1 mr-2">
+                <Navigation size={15} color="#d97706" />
+                <Text
+                  className="text-sm font-black text-slate-900 tracking-tight ml-1.5"
+                  numberOfLines={1}
+                >
+                  {userLocation?.area
+                    ? `Nearby Services in ${userLocation.area}`
+                    : "Nearby Services Around You"}
+                </Text>
+              </View>
+              <View className="bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
+                <Text className="text-[10px] font-extrabold text-amber-900">
+                  ⚡ Closest First
+                </Text>
+              </View>
+            </View>
+
+            {/* List top closest services */}
+            {filteredServices.slice(0, 15).map((srv) => (
+              <ServiceCard
+                key={srv.id}
+                service={srv}
+                onPress={() => onSelectService(srv)}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
       )}
 
