@@ -201,7 +201,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     const q = searchQuery.toLowerCase();
     return (
       s.name.toLowerCase().includes(q) ||
-      s.businessName.toLowerCase().includes(q) ||
+      Boolean(s.businessName && s.businessName.toLowerCase().includes(q)) ||
       (s.categoryName && s.categoryName.toLowerCase().includes(q)) ||
       (s.subcategoryName && s.subcategoryName.toLowerCase().includes(q)) ||
       (s.address && s.address.toLowerCase().includes(q))

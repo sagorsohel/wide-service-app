@@ -63,7 +63,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${service.name} - ${service.businessName}\nঠিকানা: ${service.address}\nযোগাযোগ: ${service.phone}\nWide Service অ্যাপে দেখুন!`,
+        message: `${service.name}${service.businessName ? ` - ${service.businessName}` : ""}\nঠিকানা: ${service.address}\nযোগাযোগ: ${service.phone}\nWide Service অ্যাপে দেখুন!`,
       });
     } catch (e) {
       console.warn("Share error:", e);
@@ -215,7 +215,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                     Service Schedule
                   </Text>
                   <Text className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                    Everyday: 9:00 AM - 9:00 PM (Emergency 24/7 Support)
+                    {service.schedule || "Everyday: 9:00 AM - 9:00 PM (Emergency 24/7 Support)"}
                   </Text>
                 </View>
               </View>

@@ -19,7 +19,8 @@ export interface Subcategory {
 export interface Service {
   id: number;
   name: string;
-  businessName: string;
+  businessName?: string | null;
+  schedule?: string | null;
   logo?: string | null;
   address: string;
   phone: string;

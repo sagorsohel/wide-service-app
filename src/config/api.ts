@@ -235,6 +235,7 @@ export async function fetchServices(
 ): Promise<Service[]> {
   try {
     const params = new URLSearchParams();
+    params.append("status", "active");
     if (categoryId) params.append("categoryId", String(categoryId));
     if (subcategoryId) params.append("subcategoryId", String(subcategoryId));
     if (userLocation?.latitude != null && userLocation?.longitude != null) {
