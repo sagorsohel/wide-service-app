@@ -33,10 +33,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={onPress}
-      className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs mb-3 flex-row items-center active:bg-slate-50/80 active:border-primary/50"
+      className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-3 flex-row items-center active:bg-slate-50/80 dark:active:bg-slate-800/80 active:border-primary/50"
     >
       {/* Left: Image / Logo */}
-      <View className="w-[50px] h-[50px] rounded-2xl overflow-hidden bg-amber-50/50 border border-amber-100/90 items-center justify-center mr-3 shrink-0">
+      <View className="w-[50px] h-[50px] rounded-2xl overflow-hidden bg-amber-50/50 dark:bg-slate-800 border border-amber-100/90 dark:border-slate-700 items-center justify-center mr-3 shrink-0">
         <Image
           source={{ uri: imageUri }}
           className="w-full h-full"
@@ -48,7 +48,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
       <View className="flex-1 justify-center pr-2">
         {/* Service Name */}
         <Text
-          className="text-sm font-extrabold text-slate-900 tracking-tight leading-snug mb-0.5"
+          className="text-sm font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-snug mb-0.5"
           numberOfLines={1}
         >
           {service.name}
@@ -57,7 +57,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
         {/* Business Name with Verified Indicator & Distance Badge */}
         <View className="flex-row items-center justify-between mb-1">
           <Text
-            className="text-xs font-bold text-amber-900/90 flex-1 mr-1.5"
+            className="text-xs font-bold text-amber-900/90 dark:text-amber-400 flex-1 mr-1.5"
             numberOfLines={1}
           >
             {service.businessName}
@@ -66,19 +66,19 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
             <View
               className={`px-2 py-0.5 rounded-full flex-row items-center shrink-0 ${
                 service.distanceKm <= 1
-                  ? "bg-emerald-50 border border-emerald-200"
+                  ? "bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800"
                   : service.distanceKm <= 3
-                  ? "bg-amber-50 border border-amber-200"
-                  : "bg-slate-100 border border-slate-200"
+                  ? "bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800"
+                  : "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
               }`}
             >
               <Text
                 className={`text-[10px] font-black ${
                   service.distanceKm <= 1
-                    ? "text-emerald-700"
+                    ? "text-emerald-700 dark:text-emerald-300"
                     : service.distanceKm <= 3
-                    ? "text-amber-700"
-                    : "text-slate-600"
+                    ? "text-amber-700 dark:text-amber-300"
+                    : "text-slate-600 dark:text-slate-400"
                 }`}
               >
                 {service.distanceKm < 1
@@ -93,7 +93,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
         <View className="flex-row items-center mb-1">
           <MapPin size={11} color="#64748b" className="shrink-0" />
           <Text
-            className="text-[11px] font-medium text-slate-500 ml-1 flex-1"
+            className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1 flex-1"
             numberOfLines={1}
           >
             {service.address}
@@ -103,7 +103,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
         {/* Phone Number */}
         <View className="flex-row items-center">
           <Phone size={10} color="#059669" className="shrink-0" />
-          <Text className="text-[11px] font-bold text-emerald-700 ml-1 font-mono">
+          <Text className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 ml-1 font-mono">
             {service.phone}
           </Text>
         </View>

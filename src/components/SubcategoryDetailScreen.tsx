@@ -9,7 +9,10 @@ import {
   RefreshControl,
   Animated,
   Easing,
+  StatusBar as RNStatusBar,
+  Platform,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, MapPin, Navigation } from "lucide-react-native";
 import { Category, Subcategory, Service, UserLocation } from "../types";
@@ -27,43 +30,43 @@ const RADIUS_OPTIONS = [
 
 // Shimmer Skeleton for Service Card (exact geometry match)
 const ServiceSkeletonCard: React.FC<{ animStyle: any }> = ({ animStyle }) => (
-  <View className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs mb-3 flex-row items-center">
+  <View className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-3 flex-row items-center">
     {/* Left: Image / Logo */}
     <Animated.View
       style={animStyle}
-      className="w-[50px] h-[50px] rounded-2xl bg-slate-200/80 mr-3 shrink-0"
+      className="w-[50px] h-[50px] rounded-2xl bg-slate-200/80 dark:bg-slate-800 mr-3 shrink-0"
     />
 
     {/* Middle: Info */}
     <View className="flex-1 justify-center pr-2">
       <Animated.View
         style={animStyle}
-        className="w-40 h-3.5 rounded bg-slate-200/90 mb-2"
+        className="w-40 h-3.5 rounded bg-slate-200/90 dark:bg-slate-800 mb-2"
       />
       <View className="flex-row items-center justify-between mb-2">
         <Animated.View
           style={animStyle}
-          className="w-24 h-2.5 rounded bg-slate-200/70"
+          className="w-24 h-2.5 rounded bg-slate-200/70 dark:bg-slate-800/70"
         />
         <Animated.View
           style={animStyle}
-          className="w-14 h-4 rounded-full bg-slate-100"
+          className="w-14 h-4 rounded-full bg-slate-100 dark:bg-slate-800"
         />
       </View>
       <Animated.View
         style={animStyle}
-        className="w-32 h-2.5 rounded bg-slate-200/60 mb-1.5"
+        className="w-32 h-2.5 rounded bg-slate-200/60 dark:bg-slate-800/60 mb-1.5"
       />
       <Animated.View
         style={animStyle}
-        className="w-20 h-2.5 rounded bg-slate-200/50"
+        className="w-20 h-2.5 rounded bg-slate-200/50 dark:bg-slate-800/50"
       />
     </View>
 
     {/* Right: Direct Call Button */}
     <Animated.View
       style={animStyle}
-      className="w-11 h-11 rounded-full bg-slate-200/70 shrink-0"
+      className="w-11 h-11 rounded-full bg-slate-200/70 dark:bg-slate-800/70 shrink-0"
     />
   </View>
 );
@@ -232,8 +235,16 @@ export const SubcategoryDetailScreen: React.FC<SubcategoryDetailScreenProps> = (
 
   const subCatImage = subcategory.image;
 
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      RNStatusBar.setBarStyle("dark-content", true);
+      RNStatusBar.setBackgroundColor("#e0b328", true);
+    }
+  }, []);
+
   return (
-    <SafeAreaView className="flex-1 bg-[#e0b328]">
+    <SafeAreaView className="flex-1 bg-[#e0b328]" style={{ backgroundColor: "#e0b328" }}>
+      <StatusBar style="dark" animated={true} />
       {/* Top Header with #e0b328 Color & Smart Animated Subcategory Emblem + Title */}
       <View className="bg-[#e0b328] px-6 pt-2 pb-5">
         <View className="flex-row items-center justify-between">
@@ -307,7 +318,7 @@ export const SubcategoryDetailScreen: React.FC<SubcategoryDetailScreenProps> = (
           opacity: contentOpacity,
           transform: [{ translateY: contentTranslateY }],
         }}
-        className="flex-1 bg-slate-50 rounded-t-[36px] overflow-hidden"
+        className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-t-[36px] overflow-hidden"
       >
         <ScrollView
           className="flex-1"
@@ -329,12 +340,12 @@ export const SubcategoryDetailScreen: React.FC<SubcategoryDetailScreenProps> = (
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center flex-1 mr-2">
                   <Navigation size={14} color="#d97706" />
-                  <Text className="text-xs font-black text-slate-800 tracking-tight ml-1.5" numberOfLines={1}>
+                  <Text className="text-xs font-black text-slate-800 dark:text-slate-100 tracking-tight ml-1.5" numberOfLines={1}>
                     {userLocation?.area ? `Services near ${userLocation.area}` : "Services near you"}
                   </Text>
                 </View>
-                <View className="bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
-                  <Text className="text-[10px] font-extrabold text-amber-900">
+                <View className="bg-amber-100/90 dark:bg-amber-950/70 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                  <Text className="text-[10px] font-extrabold text-amber-900 dark:text-amber-300">
                     ⚡ Closest First
                   </Text>
                 </View>
@@ -355,13 +366,13 @@ export const SubcategoryDetailScreen: React.FC<SubcategoryDetailScreenProps> = (
                       onPress={() => setSelectedRadius(opt.value)}
                       className={`mr-2 px-3.5 py-1.5 rounded-full border flex-row items-center ${
                         isSelected
-                          ? "bg-slate-900 border-slate-900 shadow-2xs"
-                          : "bg-white border-slate-200/90 active:bg-slate-100"
+                          ? "bg-slate-900 dark:bg-[#e0b328] border-slate-900 dark:border-[#e0b328] shadow-2xs"
+                          : "bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
                       }`}
                     >
                       <Text
                         className={`text-xs font-bold ${
-                          isSelected ? "text-white" : "text-slate-600"
+                          isSelected ? "text-white dark:text-slate-950" : "text-slate-600 dark:text-slate-300"
                         }`}
                       >
                         {opt.label}

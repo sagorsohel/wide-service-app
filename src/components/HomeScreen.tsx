@@ -9,7 +9,10 @@ import {
   RefreshControl,
   Animated,
   Easing,
+  StatusBar as RNStatusBar,
+  Platform,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Search,
@@ -22,59 +25,60 @@ import { Category, Service, UserLocation } from "../types";
 import { fetchCategories, fetchServices } from "../config/api";
 import { ServiceCard } from "./ServiceCard";
 import { SettingsScreen } from "./SettingsScreen";
+import { useTheme } from "../context/ThemeContext";
 
 // Shimmer Skeleton for Category Card (exact geometry match)
 const CategorySkeletonCard: React.FC<{ animStyle: any }> = ({ animStyle }) => (
-  <View className="w-[48%] bg-white rounded-[6px] border border-slate-200/90 py-3 px-3 items-center justify-center mb-3.5 shadow-2xs">
+  <View className="w-[48%] bg-white dark:bg-slate-900 rounded-[6px] border border-slate-200/90 dark:border-slate-800 py-3 px-3 items-center justify-center mb-3.5 shadow-2xs">
     <Animated.View
       style={animStyle}
-      className="w-14 h-14 rounded-xl bg-slate-200/80 mb-2.5"
+      className="w-14 h-14 rounded-xl bg-slate-200/80 dark:bg-slate-800 mb-2.5"
     />
     <Animated.View
       style={animStyle}
-      className="w-20 h-3.5 rounded bg-slate-200/90 mb-1"
+      className="w-20 h-3.5 rounded bg-slate-200/90 dark:bg-slate-800 mb-1"
     />
     <Animated.View
       style={animStyle}
-      className="w-12 h-2.5 rounded bg-slate-200/60"
+      className="w-12 h-2.5 rounded bg-slate-200/60 dark:bg-slate-800/60"
     />
   </View>
 );
 
 // Shimmer Skeleton for Service Card (exact geometry match)
 const ServiceSkeletonCard: React.FC<{ animStyle: any }> = ({ animStyle }) => (
-  <View className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs mb-3 flex-row items-center">
+  <View className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-3 flex-row items-center">
     <Animated.View
       style={animStyle}
-      className="w-[50px] h-[50px] rounded-2xl bg-slate-200/80 mr-3 shrink-0"
+      className="w-[50px] h-[50px] rounded-2xl bg-slate-200/80 dark:bg-slate-800 mr-3 shrink-0"
     />
     <View className="flex-1 justify-center pr-2">
       <Animated.View
         style={animStyle}
-        className="w-40 h-3.5 rounded bg-slate-200/90 mb-2"
+        className="w-40 h-3.5 rounded bg-slate-200/90 dark:bg-slate-800 mb-2"
       />
       <View className="flex-row items-center justify-between mb-2">
         <Animated.View
           style={animStyle}
-          className="w-24 h-2.5 rounded bg-slate-200/70"
+          className="w-24 h-2.5 rounded bg-slate-200/70 dark:bg-slate-800/70"
         />
         <Animated.View
           style={animStyle}
-          className="w-14 h-4 rounded-full bg-slate-100"
+          className="w-14 h-4 rounded-full bg-slate-100 dark:bg-slate-800"
         />
       </View>
       <Animated.View
         style={animStyle}
-        className="w-32 h-2.5 rounded bg-slate-200/60 mb-1.5"
+        className="w-32 h-2.5 rounded bg-slate-200/60 dark:bg-slate-800/60 mb-1.5"
       />
       <Animated.View
         style={animStyle}
-        className="w-20 h-2.5 rounded bg-slate-200/50"
+        className="w-20 h-2.5 rounded bg-slate-200/50 dark:bg-slate-800/50"
       />
     </View>
     <Animated.View
       style={animStyle}
-      className="w-11 h-11 rounded-full bg-slate-200/70 shrink-0"
+      className="w-11 h-11 rounded-full bg-slate-200/70 dark:bg-slate-800/70 shrink-0"
     />
   </View>
 );
@@ -93,6 +97,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onSelectService,
 }) => {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,8 +208,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     );
   });
 
+  const statusBarBg = isDark
+    ? (activeTab === "setting" ? "#0f172a" : "#020617")
+    : (activeTab === "setting" ? "#ffffff" : "#f8fafc");
+  const statusBarStyle: "light" | "dark" = isDark ? "light" : "dark";
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      RNStatusBar.setBarStyle(statusBarStyle === "light" ? "light-content" : "dark-content", true);
+      RNStatusBar.setBackgroundColor(statusBarBg, true);
+    }
+  }, [statusBarStyle, statusBarBg]);
+
   return (
-    <SafeAreaView className="flex-1 bg-[#f8fafc]" edges={["top", "left", "right"]}>
+    <SafeAreaView
+      className="flex-1 bg-[#f8fafc] dark:bg-slate-950"
+      edges={["top", "left", "right"]}
+      style={{ backgroundColor: statusBarBg }}
+    >
+      <StatusBar style={statusBarStyle} animated={true} />
       {activeTab === "setting" ? (
         <SettingsScreen
           userLocation={userLocation}
@@ -239,7 +261,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               activeOpacity={0.7}
               className="flex-row items-center space-x-1"
             >
-              <Text className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+              <Text className="text-xs text-slate-400 dark:text-slate-400 font-bold uppercase tracking-wider">
                 My Location
               </Text>
               <Text className="text-primary text-xs font-bold ml-1">▾</Text>
@@ -249,7 +271,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               activeOpacity={0.8}
             >
               <Text
-                className="text-xl font-black text-slate-900 tracking-tight"
+                className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight"
                 numberOfLines={1}
               >
                 {userLocation ? `${userLocation.area}, ${userLocation.city}` : "Select Location"}
@@ -260,9 +282,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Notification Bell Badge */}
           <TouchableOpacity
             activeOpacity={0.8}
-            className="w-11 h-11 rounded-full bg-white border border-slate-200/80 items-center justify-center relative shadow-2xs"
+            className="w-11 h-11 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 items-center justify-center relative shadow-2xs"
           >
-            <Bell size={18} color="#334155" />
+            <Bell size={18} color={isDark ? "#cbd5e1" : "#334155"} />
             <View className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
           </TouchableOpacity>
         </Animated.View>
@@ -275,14 +297,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           }}
           className="px-6 my-4"
         >
-          <View className="flex-row items-center bg-white border border-slate-200/80 px-4 py-3.5 rounded-2xl shadow-2xs">
-            <Search size={18} color="#94a3b8" />
+          <View className="flex-row items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 px-4 py-3.5 rounded-2xl shadow-2xs">
+            <Search size={18} color={isDark ? "#64748b" : "#94a3b8"} />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search category or service..."
-              placeholderTextColor="#9ca3af"
-              className="flex-1 text-sm text-slate-800 font-medium px-2 py-0"
+              placeholderTextColor={isDark ? "#64748b" : "#9ca3af"}
+              className="flex-1 text-sm text-slate-800 dark:text-slate-100 font-medium px-2 py-0"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
@@ -311,7 +333,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     key={cat.id}
                     onPress={() => onSelectCategory(cat)}
                     activeOpacity={0.75}
-                    className="w-[48%] bg-white rounded-[6px] border border-slate-200/90 py-3 px-3 items-center justify-center mb-3.5 shadow-2xs active:bg-slate-50 active:border-primary/60"
+                    className="w-[48%] bg-white dark:bg-slate-900 rounded-[6px] border border-slate-200/90 dark:border-slate-800 py-3 px-3 items-center justify-center mb-3.5 shadow-2xs active:bg-slate-50 dark:active:bg-slate-800 active:border-primary/60"
                   >
                     {/* Top: Admin-uploaded Image */}
                     <View className="w-14 h-14 mb-2.5 items-center justify-center">
@@ -322,7 +344,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                           resizeMode="contain"
                         />
                       ) : (
-                        <View className="w-12 h-12 rounded-xl bg-amber-50 items-center justify-center">
+                        <View className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 items-center justify-center">
                           <Text className="text-2xl">🛠️</Text>
                         </View>
                       )}
@@ -330,7 +352,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
                     {/* Bottom: Exact Admin-provided Name */}
                     <Text
-                      className="text-xs sm:text-sm font-semibold text-slate-800 text-center tracking-tight"
+                      className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 text-center tracking-tight"
                       numberOfLines={2}
                     >
                       {cat.name}
@@ -348,11 +370,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <View className="flex-row items-center justify-between mb-3">
               <Animated.View
                 style={{ opacity: shimmerAnim }}
-                className="w-40 h-4 rounded bg-slate-200/80"
+                className="w-40 h-4 rounded bg-slate-200/80 dark:bg-slate-800"
               />
               <Animated.View
                 style={{ opacity: shimmerAnim }}
-                className="w-20 h-4 rounded-full bg-slate-200/70"
+                className="w-20 h-4 rounded-full bg-slate-200/70 dark:bg-slate-800"
               />
             </View>
             {[1, 2, 3].map((i) => (
@@ -365,7 +387,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <View className="flex-row items-center flex-1 mr-2">
                 <Navigation size={15} color="#d97706" />
                 <Text
-                  className="text-sm font-black text-slate-900 tracking-tight ml-1.5"
+                  className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight ml-1.5"
                   numberOfLines={1}
                 >
                   {userLocation?.area
@@ -373,8 +395,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     : "Nearby Services Around You"}
                 </Text>
               </View>
-              <View className="bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
-                <Text className="text-[10px] font-extrabold text-amber-900">
+              <View className="bg-amber-100/90 dark:bg-amber-950/70 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                <Text className="text-[10px] font-extrabold text-amber-900 dark:text-amber-300">
                   ⚡ Closest First
                 </Text>
               </View>
@@ -395,7 +417,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* Full-Width Edge-to-Edge Bottom Navigation Bar */}
       <View
-        className="absolute bottom-0 left-0 right-0 bg-white/95 border-t border-slate-200/80"
+        className="absolute bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800"
         style={{
           paddingBottom: Math.max(insets.bottom, 12),
           elevation: 20,
@@ -413,19 +435,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             className={`flex-1 flex-row items-center justify-center py-2.5 px-4 mx-1.5 rounded-2xl ${
               activeTab === "home"
                 ? "bg-[#e0b328]/15 border border-[#e0b328]/60 shadow-2xs"
-                : "bg-slate-50/80 border border-slate-200/50"
+                : "bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/80"
             }`}
           >
             <View
               className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${
                 activeTab === "home"
                   ? "bg-[#e0b328] shadow-xs"
-                  : "bg-white border border-slate-200/60"
+                  : "bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700"
               }`}
             >
               <Home
                 size={17}
-                color={activeTab === "home" ? "#0f172a" : "#64748b"}
+                color={activeTab === "home" ? "#0f172a" : isDark ? "#94a3b8" : "#64748b"}
                 strokeWidth={activeTab === "home" ? 2.6 : 2}
               />
             </View>
@@ -433,8 +455,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <Text
                 className={`text-xs tracking-tight ${
                   activeTab === "home"
-                    ? "font-black text-slate-900"
-                    : "font-bold text-slate-500"
+                    ? "font-black text-slate-900 dark:text-slate-100"
+                    : "font-bold text-slate-500 dark:text-slate-400"
                 }`}
               >
                 Home
@@ -452,19 +474,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             className={`flex-1 flex-row items-center justify-center py-2.5 px-4 mx-1.5 rounded-2xl ${
               activeTab === "setting"
                 ? "bg-[#e0b328]/15 border border-[#e0b328]/60 shadow-2xs"
-                : "bg-slate-50/80 border border-slate-200/50"
+                : "bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/80"
             }`}
           >
             <View
               className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${
                 activeTab === "setting"
                   ? "bg-[#e0b328] shadow-xs"
-                  : "bg-white border border-slate-200/60"
+                  : "bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700"
               }`}
             >
               <Settings
                 size={17}
-                color={activeTab === "setting" ? "#0f172a" : "#64748b"}
+                color={activeTab === "setting" ? "#0f172a" : isDark ? "#94a3b8" : "#64748b"}
                 strokeWidth={activeTab === "setting" ? 2.6 : 2}
               />
             </View>
@@ -472,8 +494,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <Text
                 className={`text-xs tracking-tight ${
                   activeTab === "setting"
-                    ? "font-black text-slate-900"
-                    : "font-bold text-slate-500"
+                    ? "font-black text-slate-900 dark:text-slate-100"
+                    : "font-bold text-slate-500 dark:text-slate-400"
                 }`}
               >
                 Settings

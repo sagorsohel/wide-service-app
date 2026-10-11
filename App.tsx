@@ -1,6 +1,6 @@
 import "./global.css";
 import React, { useState, useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, StatusBar as RNStatusBar, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SplashScreen } from "./src/components/SplashScreen";
 import { LocationPickerScreen } from "./src/components/LocationPickerScreen";
@@ -15,8 +15,10 @@ import {
   getHasSeenSplash,
   setHasSeenSplash,
 } from "./src/services/locationStorage";
+import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 
-export default function App() {
+function AppContent() {
+  const { isDark, colors } = useTheme();
   const [isInitializing, setIsInitializing] = useState(true);
   const [currentScreen, setCurrentScreen] = useState<"splash" | "location" | "home">("splash");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
@@ -80,21 +82,55 @@ export default function App() {
     }
   };
 
+  // Determine whether current screen has a golden #e0b328 header
+  const isYellowHeaderScreen =
+    currentScreen === "location" ||
+    !!selectedService ||
+    (!!selectedSubcategory && !!selectedCategory) ||
+    !!selectedCategory;
+
+  // On #e0b328 (yellow), status bar icons must always be dark.
+  // In HomeScreen / SettingsScreen, dark mode has light icons with dark background (#020617).
+  const statusBarStyle: "light" | "dark" = isYellowHeaderScreen
+    ? "dark"
+    : currentScreen === "splash"
+    ? "dark"
+    : isDark
+    ? "light"
+    : "dark";
+
+  const statusBarBg = isYellowHeaderScreen
+    ? "#e0b328"
+    : currentScreen === "splash"
+    ? "#ffffff"
+    : isDark
+    ? "#020617"
+    : "#f8fafc";
+
+  // Synchronize native Android StatusBar
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      RNStatusBar.setBarStyle(statusBarStyle === "light" ? "light-content" : "dark-content", true);
+      RNStatusBar.setBackgroundColor(statusBarBg, true);
+    }
+  }, [statusBarStyle, statusBarBg]);
+
   // Prevent UI flicker while reading initial storage
   if (isInitializing) {
     return (
-      <SafeAreaProvider>
-        <View className="flex-1 bg-white items-center justify-center">
-          <StatusBar style="dark" />
-          <ActivityIndicator size="small" color="#e0b328" />
-        </View>
-      </SafeAreaProvider>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: statusBarBg }}
+      >
+        <StatusBar style={statusBarStyle} animated={true} />
+        <ActivityIndicator size="small" color="#e0b328" />
+      </View>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
+    <View className="flex-1" style={{ backgroundColor: statusBarBg }}>
+      <StatusBar style={statusBarStyle} animated={true} />
 
       {currentScreen === "splash" ? (
         <SplashScreen onGetStarted={handleGetStarted} />
@@ -142,6 +178,16 @@ export default function App() {
           }}
         />
       )}
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

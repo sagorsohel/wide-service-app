@@ -1,5 +1,6 @@
-import React from "react";
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, Image, TouchableOpacity, StatusBar as RNStatusBar, Platform } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 interface SplashScreenProps {
@@ -7,8 +8,16 @@ interface SplashScreenProps {
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onGetStarted }) => {
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      RNStatusBar.setBarStyle("dark-content", true);
+      RNStatusBar.setBackgroundColor("#ffffff", true);
+    }
+  }, []);
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" style={{ backgroundColor: "#ffffff" }}>
+      <StatusBar style="dark" animated={true} />
       {/* Top Hero Section with Map Background & Service Worker */}
       <View className="relative flex-1 bg-blue-100/60 overflow-hidden rounded-b-[40px] items-center justify-end">
         {/* Soft decorative ambient circles */}
