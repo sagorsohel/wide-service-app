@@ -1,13 +1,116 @@
-import { Platform } from "react-native";
+import { Platform, NativeModules } from "react-native";
+import Constants from "expo-constants";
 import { Category, Subcategory, Service } from "../types";
 
-// Local LAN IP of your PC (so physical mobile devices on Wi-Fi can reach the backend)
-const PC_LAN_IP = "192.168.1.72";
+/**
+ * Collects all candidate backend base URLs across any network:
+ * 1. Expo's hostUri (dynamically extracts the computer IP from Metro)
+ * 2. React Native scriptURL
+ * 3. Known computer Wi-Fi IPs across your routers / hotspots
+ * 4. Android Emulator / Web fallbacks
+ */
+function getCandidateBaseUrls(): string[] {
+  const urls: string[] = [];
 
-export const API_BASE_URL = Platform.select({
-  web: "http://localhost:5000/api",
-  default: `http://${PC_LAN_IP}:5000/api`,
-});
+  if (Platform.OS === "web") {
+    urls.push("http://localhost:5000/api");
+    return urls;
+  }
+
+  // 1. Dynamic host from Expo Constants (Primary in Expo Go)
+  try {
+    const hostUri =
+      Constants.expoConfig?.hostUri ||
+      (Constants as any).manifest?.debuggerHost ||
+      (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+    if (hostUri) {
+      const ip = hostUri.split(":")[0];
+      if (ip && ip !== "localhost" && ip !== "127.0.0.1") {
+        urls.push(`http://${ip}:5000/api`);
+      }
+    }
+  } catch (e) {}
+
+  // 2. Dynamic host from NativeModules.SourceCode.scriptURL
+  try {
+    const scriptURL: string = NativeModules?.SourceCode?.scriptURL;
+    if (scriptURL) {
+      const match = scriptURL.match(/^https?:\/\/([^:/]+)/);
+      if (match && match[1] && match[1] !== "localhost" && match[1] !== "127.0.0.1") {
+        const ip = match[1];
+        const url = `http://${ip}:5000/api`;
+        if (!urls.includes(url)) {
+          urls.push(url);
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 3. Known computer LAN IPs (covers your home/office Wi-Fi networks and hotspots)
+  const knownIps = [
+    "192.168.1.72", // Current Wi-Fi IP
+    "192.168.0.106", // Alternate Wi-Fi IP
+    "10.0.2.2", // Android Emulator host loopback
+    "127.0.0.1",
+    "localhost",
+  ];
+
+  for (const ip of knownIps) {
+    const url = `http://${ip}:5000/api`;
+    if (!urls.includes(url)) {
+      urls.push(url);
+    }
+  }
+
+  return urls;
+}
+
+// Memory cache for the currently verified working backend URL
+let cachedWorkingBaseUrl: string | null = null;
+
+export const API_BASE_URL = getCandidateBaseUrls()[0];
+
+/**
+ * Resilient multi-network fetch that automatically discovers and connects to
+ * the backend on ANY Wi-Fi, hotspot, or local network.
+ */
+async function smartFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const candidateUrls = getCandidateBaseUrls();
+
+  // If a known working URL is cached, try it first
+  const orderedUrls = cachedWorkingBaseUrl
+    ? [cachedWorkingBaseUrl, ...candidateUrls.filter((u) => u !== cachedWorkingBaseUrl)]
+    : candidateUrls;
+
+  let lastError: any = null;
+
+  for (const baseUrl of orderedUrls) {
+    const fullUrl = `${baseUrl}${endpoint}`;
+    try {
+      const controller = new AbortController();
+      // Fast timeout per attempt so failover takes max 3 seconds
+      const timeout = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(fullUrl, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        cachedWorkingBaseUrl = baseUrl; // Cache the verified working IP
+        return res;
+      }
+    } catch (err: any) {
+      lastError = err;
+      if (baseUrl === cachedWorkingBaseUrl) {
+        cachedWorkingBaseUrl = null; // Invalidate cache if network changed
+      }
+    }
+  }
+
+  throw lastError || new Error("Failed to connect to any backend URL");
+}
 
 // Default categories fallback
 const FALLBACK_CATEGORIES: Category[] = [
@@ -77,14 +180,10 @@ const FALLBACK_SERVICES: Service[] = [
   },
 ];
 
-// Fetch categories from Backend API
+// Fetch categories from Backend API across any network
 export async function fetchCategories(): Promise<Category[]> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(`${API_BASE_URL}/categories`, { signal: controller.signal });
-    clearTimeout(timeout);
-
+    const res = await smartFetch("/categories");
     if (res.ok) {
       const json = await res.json();
       if (json.data && Array.isArray(json.data) && json.data.length > 0) {
@@ -97,16 +196,10 @@ export async function fetchCategories(): Promise<Category[]> {
   return FALLBACK_CATEGORIES;
 }
 
-// Fetch subcategories for a given category from Backend API
+// Fetch subcategories for a given category from Backend API across any network
 export async function fetchSubcategories(categoryId: number): Promise<Subcategory[]> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(`${API_BASE_URL}/subcategories?categoryId=${categoryId}`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
+    const res = await smartFetch(`/subcategories?categoryId=${categoryId}`);
     if (res.ok) {
       const json = await res.json();
       if (json.data && Array.isArray(json.data)) {
@@ -132,21 +225,15 @@ export async function fetchSubcategories(categoryId: number): Promise<Subcategor
   return [];
 }
 
-// Fetch services from Backend API
+// Fetch services from Backend API across any network
 export async function fetchServices(categoryId?: number, subcategoryId?: number): Promise<Service[]> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
     const params = new URLSearchParams();
     if (categoryId) params.append("categoryId", String(categoryId));
     if (subcategoryId) params.append("subcategoryId", String(subcategoryId));
 
-    const url = params.toString()
-      ? `${API_BASE_URL}/services?${params.toString()}`
-      : `${API_BASE_URL}/services`;
-
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
+    const endpoint = params.toString() ? `/services?${params.toString()}` : `/services`;
+    const res = await smartFetch(endpoint);
 
     if (res.ok) {
       const json = await res.json();

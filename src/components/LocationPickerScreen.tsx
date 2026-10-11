@@ -15,8 +15,8 @@ import {
   MapPin,
   LocateFixed,
   X,
-  Layers,
   Check,
+  Edit3,
 } from "lucide-react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import * as Location from "expo-location";
@@ -29,20 +29,19 @@ interface LocationPickerScreenProps {
   onLocationSelected: (location: UserLocation) => void;
 }
 
-// Major cities across Bangladesh for quick flyTo jumps
+// Major cities for quick flyTo jumps
 const QUICK_CITIES = [
+  { name: "Rajshahi", lat: 24.3636, lng: 88.6241 },
   { name: "Dhaka", lat: 23.8103, lng: 90.4125 },
   { name: "Chittagong", lat: 22.3569, lng: 91.7832 },
   { name: "Sylhet", lat: 24.8949, lng: 91.8687 },
-  { name: "Rajshahi", lat: 24.3636, lng: 88.6241 },
   { name: "Khulna", lat: 22.8456, lng: 89.5403 },
   { name: "Barishal", lat: 22.701, lng: 90.3535 },
   { name: "Rangpur", lat: 25.7439, lng: 89.2752 },
-  { name: "Comilla", lat: 23.4607, lng: 91.1809 },
 ];
 
 /**
- * Generates interactive in-app Google Maps HTML using Leaflet & free Google Maps tile servers
+ * Generates interactive in-app Google Maps HTML with 100% dynamic, exact reverse geocoding
  */
 function getMapHtml(initialLat: number, initialLng: number): string {
   return `<!DOCTYPE html>
@@ -169,14 +168,14 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
-    /* Beautiful Leaflet Zoom Controls (positioned with spacing above GPS button) */
+    /* Beautiful Leaflet Zoom Controls */
     .leaflet-control-zoom {
       border: none !important;
       box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
       border-radius: 14px !important;
       overflow: hidden !important;
       margin-right: 16px !important;
-      margin-bottom: 96px !important; /* Lifts zoom controls way above the GPS button */
+      margin-bottom: 96px !important;
       background: #ffffff !important;
       border: 1.5px solid #e2e8f0 !important;
     }
@@ -202,7 +201,6 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       color: #b45309 !important;
     }
 
-    /* Subtle attribution in bottom left */
     .leaflet-control-attribution {
       background: rgba(255, 255, 255, 0.75) !important;
       backdrop-filter: blur(4px) !important;
@@ -248,7 +246,7 @@ function getMapHtml(initialLat: number, initialLng: number): string {
   <script>
     var currentLat = ${initialLat};
     var currentLng = ${initialLng};
-    
+
     // 100% Free Google Maps Tiles
     var streetLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       maxZoom: 20,
@@ -262,15 +260,13 @@ function getMapHtml(initialLat: number, initialLng: number): string {
 
     var map = L.map('map', {
       center: [currentLat, currentLng],
-      zoom: 15,
+      zoom: 17,
       zoomControl: false,
       layers: [streetLayer]
     });
 
-    // Clean zoom control positioned nicely on bottomright
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Place attribution in bottom left to keep bottom right clean
     if (map.attributionControl) {
       map.attributionControl.setPosition('bottomleft');
     }
@@ -303,23 +299,33 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       }
     }
 
+    // 100% Dynamic Exact Reverse Geocoding
     function reverseGeocode(lat, lng) {
       loadingEl.classList.add('show');
-      var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1';
-      fetch(url, { headers: { 'Accept-Language': 'en' } })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
+
+      // 1. Primary Dynamic Engine: Photon POI Reverse Lookup (detects exact building, hospital, shop, pharmacy, etc.)
+      var photonUrl = 'https://photon.komoot.io/reverse?lat=' + lat + '&lon=' + lng;
+      fetch(photonUrl, {
+        headers: { 'User-Agent': 'WideServiceApp/1.0', 'Accept': 'application/json' }
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('Photon error');
+        return res.json();
+      })
+      .then(function(data) {
+        var p = data && data.features && data.features[0] && data.features[0].properties;
+        if (p && (p.name || p.street)) {
           loadingEl.classList.remove('show');
-          var address = 'Selected Location';
-          var area = 'My Area';
-          var city = 'Bangladesh';
-          if (data && data.address) {
-            var addr = data.address;
-            area = addr.suburb || addr.neighbourhood || addr.quarter || addr.residential || addr.road || addr.village || 'Selected Area';
-            city = addr.city || addr.town || addr.district || addr.state || 'Bangladesh';
-            var parts = [addr.road, addr.suburb || addr.neighbourhood, addr.city || addr.town, addr.district].filter(Boolean);
-            address = parts.join(', ') || data.display_name.split(',').slice(0, 3).join(', ');
-          }
+          var area = p.name || p.street || p.district || 'Selected Location';
+          var street = p.street || '';
+          var district = p.district || '';
+          var city = p.city || p.county || p.state || 'Bangladesh';
+          var rawParts = [p.name, street, district, city].filter(Boolean);
+          var parts = rawParts.filter(function(item, pos) {
+            return rawParts.indexOf(item) === pos;
+          });
+          var address = parts.join(', ');
+
           notifyParent({
             type: 'LOCATION_CHANGED',
             latitude: lat,
@@ -328,22 +334,57 @@ function getMapHtml(initialLat: number, initialLng: number): string {
             area: area,
             city: city
           });
-        })
-        .catch(function() {
-          loadingEl.classList.remove('show');
-          notifyParent({
-            type: 'LOCATION_CHANGED',
-            latitude: lat,
-            longitude: lng,
-            address: 'Pinpoint (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')',
-            area: 'Pinned Spot',
-            city: 'Bangladesh'
+          return;
+        }
+        throw new Error('No named POI in Photon');
+      })
+      .catch(function() {
+        // 2. Secondary Dynamic Fallback: OpenStreetMap Nominatim
+        var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=19&addressdetails=1';
+        fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'WideServiceApp/1.0' } })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            loadingEl.classList.remove('show');
+            var address = 'Selected Location';
+            var area = 'Selected Area';
+            var city = 'Bangladesh';
+            if (data) {
+              var addr = data.address || {};
+              area = data.name || addr.amenity || addr.shop || addr.building || addr.road || addr.neighbourhood || addr.suburb || addr.quarter || addr.village || 'Selected Area';
+              city = addr.city || addr.town || addr.district || addr.state || 'Bangladesh';
+              var rawParts = [data.name || addr.road, addr.neighbourhood || addr.suburb, city].filter(Boolean);
+              var parts = rawParts.filter(function(item, pos) {
+                return rawParts.indexOf(item) === pos;
+              });
+              address = parts.join(', ') || data.display_name.split(',').slice(0, 3).join(', ');
+            }
+
+            notifyParent({
+              type: 'LOCATION_CHANGED',
+              latitude: lat,
+              longitude: lng,
+              address: address,
+              area: area,
+              city: city
+            });
+          })
+          .catch(function() {
+            loadingEl.classList.remove('show');
+            notifyParent({
+              type: 'LOCATION_CHANGED',
+              latitude: lat,
+              longitude: lng,
+              address: 'Pinpoint (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')',
+              area: 'Pinned Spot',
+              city: 'Bangladesh'
+            });
           });
-        });
+      });
     }
 
     map.on('movestart', function() {
       pinEl.classList.add('dragging');
+      notifyParent({ type: 'PIN_MOVED' });
     });
 
     map.on('moveend', function() {
@@ -359,12 +400,11 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       map.panTo(e.latlng);
     });
 
-    // Listen to messages from parent (React Native or Web)
     function handleParentMessage(event) {
       try {
         var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         if (data && data.type === 'FLY_TO') {
-          map.flyTo([data.latitude, data.longitude], data.zoom || 16);
+          map.flyTo([data.latitude, data.longitude], data.zoom || 17);
         }
       } catch(e) {}
     }
@@ -372,10 +412,9 @@ function getMapHtml(initialLat: number, initialLng: number): string {
     window.addEventListener('message', handleParentMessage);
     document.addEventListener('message', handleParentMessage);
 
-    // Initial reverse geocode
     setTimeout(function() {
       reverseGeocode(currentLat, currentLng);
-    }, 400);
+    }, 350);
   </script>
 </body>
 </html>`;
@@ -390,6 +429,9 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   const initialLng = currentLocation?.longitude || DEFAULT_LOCATION.longitude || 90.4125;
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [customAreaName, setCustomAreaName] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameInput, setEditNameInput] = useState("");
   const [selectedLoc, setSelectedLoc] = useState<UserLocation>(
     currentLocation || DEFAULT_LOCATION
   );
@@ -398,7 +440,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   const webViewRef = useRef<WebView>(null);
 
   // Send flyTo command to in-app Google Maps
-  const flyToCoordinates = (lat: number, lng: number, zoom = 16) => {
+  const flyToCoordinates = (lat: number, lng: number, zoom = 17) => {
     const payload = JSON.stringify({ type: "FLY_TO", latitude: lat, longitude: lng, zoom });
 
     if (Platform.OS === "web" && typeof document !== "undefined") {
@@ -413,50 +455,58 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     }
   };
 
+  // Handle dynamic location update messages from map
+  const handleLocationUpdate = (data: any) => {
+    if (!data) return;
+
+    if (data.type === "PIN_MOVED") {
+      setCustomAreaName(null);
+      return;
+    }
+
+    if (data.type === "LOCATION_CHANGED") {
+      const finalArea = customAreaName || data.area;
+      const finalAddress = customAreaName || data.address;
+      const finalCity = data.city || "Bangladesh";
+
+      setSelectedLoc({
+        address: finalAddress,
+        area: finalArea,
+        city: finalCity,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        isCurrentGps: false,
+      });
+    }
+  };
+
   // Listen to messages on Web platform
   useEffect(() => {
     if (Platform.OS === "web" && typeof window !== "undefined") {
       const handleWebMessage = (event: MessageEvent) => {
         try {
           const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-          if (data && data.type === "LOCATION_CHANGED") {
-            setSelectedLoc({
-              address: data.address,
-              area: data.area,
-              city: data.city,
-              latitude: data.latitude,
-              longitude: data.longitude,
-              isCurrentGps: false,
-            });
-          }
+          handleLocationUpdate(data);
         } catch (e) {}
       };
 
       window.addEventListener("message", handleWebMessage);
       return () => window.removeEventListener("message", handleWebMessage);
     }
-  }, []);
+  }, [customAreaName]);
 
   // Handle messages on Native WebView
   const handleNativeMessage = (event: WebViewMessageEvent) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data && data.type === "LOCATION_CHANGED") {
-        setSelectedLoc({
-          address: data.address,
-          area: data.area,
-          city: data.city,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          isCurrentGps: false,
-        });
-      }
+      handleLocationUpdate(data);
     } catch (e) {}
   };
 
   // Live GPS button action
   const handleDetectCurrentLocation = async () => {
     setIsDetectingGps(true);
+    setCustomAreaName(null);
     try {
       if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -497,15 +547,60 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     }
   };
 
-  // Search input geocoding & jump
-  const handleSearchSubmit = async () => {
-    if (!searchQuery.trim()) return;
-    setIsSearching(true);
+  // Apply custom name directly
+  const handleApplyCustomName = (name?: string) => {
+    const query = (name || searchQuery).trim();
+    if (!query) return;
+    setCustomAreaName(query);
+    setSelectedLoc((prev) => ({
+      ...prev,
+      address: query,
+      area: query.split(",")[0].trim(),
+    }));
+  };
 
+  // Dynamic live search for ANY place, address, or POI worldwide
+  const handleSearchSubmit = async () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+    setIsSearching(true);
+    setCustomAreaName(query);
+
+    // 1. Try Photon Search first (accurate POI, building, and road search)
+    try {
+      const photonRes = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`,
+        { headers: { "User-Agent": "WideServiceApp/1.0", "Accept": "application/json" } }
+      );
+      if (photonRes.ok) {
+        const json = await photonRes.json();
+        const f = json.features?.[0];
+        if (f && f.geometry?.coordinates) {
+          const lng = f.geometry.coordinates[0];
+          const lat = f.geometry.coordinates[1];
+          const p = f.properties || {};
+          const area = p.name || query;
+          const address = [p.name, p.street, p.district, p.city].filter(Boolean).join(", ");
+          flyToCoordinates(lat, lng, 17);
+          setSelectedLoc({
+            address: address || query,
+            area: area,
+            city: p.city || "Bangladesh",
+            latitude: lat,
+            longitude: lng,
+            isCurrentGps: false,
+          });
+          setIsSearching(false);
+          return;
+        }
+      }
+    } catch (err) {}
+
+    // 2. Secondary Dynamic Search: OpenStreetMap Nominatim
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          searchQuery.trim()
+          query
         )}&limit=1`,
         { headers: { "User-Agent": "WideServiceApp/1.0" } }
       );
@@ -514,7 +609,15 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
         if (Array.isArray(list) && list.length > 0) {
           const lat = parseFloat(list[0].lat);
           const lng = parseFloat(list[0].lon);
-          flyToCoordinates(lat, lng, 16);
+          flyToCoordinates(lat, lng, 17);
+          setSelectedLoc({
+            address: list[0].display_name || query,
+            area: list[0].name || query.split(",")[0].trim(),
+            city: "Bangladesh",
+            latitude: lat,
+            longitude: lng,
+            isCurrentGps: false,
+          });
           setIsSearching(false);
           return;
         }
@@ -522,6 +625,12 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     } catch (err) {
       console.warn("Search geocode error:", err);
     }
+
+    setSelectedLoc((prev) => ({
+      ...prev,
+      address: query,
+      area: query.split(",")[0].trim(),
+    }));
     setIsSearching(false);
   };
 
@@ -582,13 +691,35 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
           )}
           {searchQuery.length > 0 && !isSearching && (
             <TouchableOpacity
-              onPress={() => setSearchQuery("")}
+              onPress={() => {
+                setSearchQuery("");
+                setCustomAreaName(null);
+              }}
               className="w-6 h-6 rounded-full bg-slate-100 items-center justify-center ml-1"
             >
               <X size={13} color="#64748b" />
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Quick Set Custom Location Name Pill */}
+        {searchQuery.trim().length > 0 && (
+          <TouchableOpacity
+            onPress={() => handleApplyCustomName(searchQuery.trim())}
+            activeOpacity={0.85}
+            className="mt-2 bg-amber-50/95 border border-amber-300 rounded-xl px-3.5 py-2 flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center flex-1 mr-2">
+              <MapPin size={15} color="#b45309" className="mr-2 shrink-0" />
+              <Text className="text-xs font-bold text-amber-950" numberOfLines={1}>
+                Set Location Name: <Text className="font-black text-amber-900">"{searchQuery.trim()}"</Text>
+              </Text>
+            </View>
+            <View className="bg-[#e0b328] px-2.5 py-1 rounded-lg">
+              <Text className="text-[11px] font-black text-slate-900">Apply</Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Main Container */}
@@ -642,7 +773,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             />
           )}
 
-          {/* Floating Highlighted Live GPS Button on Map (Bottom-Right) */}
+          {/* Floating Highlighted Live GPS Button on Map */}
           <TouchableOpacity
             onPress={handleDetectCurrentLocation}
             disabled={isDetectingGps}
@@ -656,7 +787,6 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
               shadowRadius: 10,
             }}
           >
-            {/* Glowing Target Icon Badge */}
             <View className="w-8 h-8 rounded-full bg-amber-500/15 items-center justify-center mr-2 border border-amber-300">
               {isDetectingGps ? (
                 <ActivityIndicator size="small" color="#b45309" />
@@ -665,7 +795,6 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
               )}
             </View>
 
-            {/* Clear, Prominent Label */}
             <Text className="text-xs font-black text-slate-900 tracking-tight">
               {isDetectingGps ? "Finding GPS..." : "My Location"}
             </Text>
@@ -676,20 +805,56 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
         <View className="bg-white border-t border-slate-200 px-6 pt-4 pb-6 shadow-2xl z-30">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-1 pr-3">
-              <View className="flex-row items-center mb-0.5">
+              <View className="flex-row items-center mb-1">
                 <MapPin size={14} color="#e0b328" className="mr-1" />
                 <Text className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Selected Location (In-App Pin)
                 </Text>
               </View>
-              <Text
-                className="text-base font-black text-slate-900 tracking-tight"
-                numberOfLines={1}
-              >
-                {selectedLoc.address}
-              </Text>
-              <Text className="text-xs font-semibold text-slate-500 mt-0.5">
-                {selectedLoc.area}, {selectedLoc.city}
+              {isEditingName ? (
+                <View className="flex-row items-center mt-1 mb-1.5">
+                  <TextInput
+                    value={editNameInput}
+                    onChangeText={setEditNameInput}
+                    placeholder="Enter location name..."
+                    placeholderTextColor="#94a3b8"
+                    className="flex-1 bg-slate-50 border border-amber-300 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-800"
+                    autoFocus
+                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (editNameInput.trim()) {
+                        handleApplyCustomName(editNameInput.trim());
+                      }
+                      setIsEditingName(false);
+                    }}
+                    className="ml-2 bg-[#e0b328] px-3 py-2 rounded-xl"
+                  >
+                    <Text className="text-xs font-black text-slate-900">Save</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Text
+                    className="text-base font-black text-slate-900 tracking-tight flex-1"
+                    numberOfLines={1}
+                  >
+                    {selectedLoc.area || selectedLoc.address}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditNameInput(selectedLoc.area || selectedLoc.address);
+                      setIsEditingName(true);
+                    }}
+                    activeOpacity={0.7}
+                    className="p-1.5 rounded-lg bg-amber-50 border border-amber-200 ml-2"
+                  >
+                    <Edit3 size={13} color="#b45309" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <Text className="text-xs font-semibold text-slate-500 mt-0.5" numberOfLines={1}>
+                {selectedLoc.address || `${selectedLoc.area}, ${selectedLoc.city}`}
               </Text>
             </View>
 
@@ -700,6 +865,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             </View>
           </View>
 
+          {/* Confirm Button */}
           <TouchableOpacity
             onPress={handleConfirm}
             activeOpacity={0.88}
