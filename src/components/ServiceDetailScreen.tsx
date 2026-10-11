@@ -10,6 +10,7 @@ import {
   StatusBar as RNStatusBar,
   Platform,
   Modal,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -257,25 +258,43 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     !isNaN(Number(service.longitude));
 
   // Phone Call Action
-  const handleCall = () => {
-    if (service.phone) {
-      const cleanNumber = service.phone.replace(/[^0-9+]/g, "");
-      Linking.openURL(`tel:${cleanNumber}`).catch((err) => {
-        console.warn("Could not launch phone dialer:", err);
-      });
+  const handleCall = async () => {
+    if (!service.phone) {
+      Alert.alert("Contact Info", "No phone number available for this service.");
+      return;
+    }
+    const cleanNumber = service.phone.replace(/[^0-9+]/g, "");
+    const telUrl = `tel:${cleanNumber}`;
+    try {
+      await Linking.openURL(telUrl);
+    } catch (err) {
+      console.warn("Could not launch phone dialer:", err);
+      Alert.alert(
+        "Phone Call",
+        `Service Number: ${service.phone}\n\nCould not open dialer app on this device.`
+      );
     }
   };
 
   // WhatsApp Action
-  const handleWhatsApp = () => {
-    if (service.whatsapp) {
-      const cleanWa = service.whatsapp.replace(/[^0-9]/g, "");
-      const msg = encodeURIComponent(
-        `হ্যালো, আমি Wide Service অ্যাপ থেকে "${service.name}" সম্পর্কে জানতে যোগাযোগ করছি।`
+  const handleWhatsApp = async () => {
+    if (!service.whatsapp) {
+      Alert.alert("WhatsApp Info", "No WhatsApp number provided for this service.");
+      return;
+    }
+    const cleanWa = service.whatsapp.replace(/[^0-9]/g, "");
+    const msg = encodeURIComponent(
+      `হ্যালো, আমি Wide Service অ্যাপ থেকে "${service.name}" সম্পর্কে জানতে যোগাযোগ করছি।`
+    );
+    const waUrl = `https://wa.me/${cleanWa}?text=${msg}`;
+    try {
+      await Linking.openURL(waUrl);
+    } catch (err) {
+      console.warn("Could not open WhatsApp:", err);
+      Alert.alert(
+        "WhatsApp",
+        `WhatsApp Number: ${service.whatsapp}\n\nWhatsApp is not installed or could not be opened.`
       );
-      Linking.openURL(`https://wa.me/${cleanWa}?text=${msg}`).catch((err) => {
-        console.warn("Could not open WhatsApp:", err);
-      });
     }
   };
 
@@ -292,19 +311,18 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
 
   // Open Location in Native Maps / Google Maps Directions
   const handleOpenMaps = async () => {
+    const destination = hasCoordinates
+      ? `${serviceLat},${serviceLng}`
+      : encodeURIComponent(service.address || service.name);
+
+    const originParam =
+      currentUserLoc?.latitude != null && currentUserLoc?.longitude != null
+        ? `&origin=${currentUserLoc.latitude},${currentUserLoc.longitude}`
+        : "";
+
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${originParam}`;
+
     try {
-      const destination = hasCoordinates
-        ? `${serviceLat},${serviceLng}`
-        : encodeURIComponent(service.address || service.name);
-
-      const originParam =
-        currentUserLoc?.latitude != null && currentUserLoc?.longitude != null
-          ? `&origin=${currentUserLoc.latitude},${currentUserLoc.longitude}`
-          : "";
-
-      const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${originParam}`;
-
-      // Open Google Maps Directions directly
       await Linking.openURL(googleMapsUrl);
     } catch (err) {
       console.warn("Could not open Google Maps directly, trying fallback:", err);
@@ -313,6 +331,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
       } catch (fallbackErr) {
         console.error("Failed to open fallback maps:", fallbackErr);
+        Alert.alert(
+          "Service Location",
+          `Address: ${service.address || service.name}\nCoordinates: ${serviceLat}, ${serviceLng}`
+        );
       }
     }
   };
@@ -334,6 +356,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           <TouchableOpacity
             onPress={onBack}
             activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
           >
             <ChevronLeft size={28} color="#0f172a" />
@@ -351,6 +374,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           <TouchableOpacity
             onPress={handleShare}
             activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             className="w-10 h-10 items-center justify-center -mr-2 active:opacity-60"
           >
             <Share2 size={20} color="#0f172a" />
@@ -359,9 +383,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       </View>
 
       {/* Main Curvy Content Sheet */}
-      <View className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-t-[30px] overflow-hidden">
+      <View className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-t-[30px]">
         <ScrollView
           className="flex-1"
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 120 }}
         >
@@ -479,8 +504,9 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                   <TouchableOpacity
                     onPress={handlePrevImage}
                     activeOpacity={0.7}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    className="absolute left-2.5 top-1/2 -mt-5 w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20 shadow-md"
+                    hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                    style={{ zIndex: 30, elevation: 8 }}
+                    className="absolute left-2.5 top-1/2 -mt-5 w-10 h-10 rounded-full bg-black/70 items-center justify-center border border-white/20 shadow-md"
                   >
                     <ChevronLeft size={22} color="#ffffff" />
                   </TouchableOpacity>
@@ -491,8 +517,9 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                   <TouchableOpacity
                     onPress={handleNextImage}
                     activeOpacity={0.7}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    className="absolute right-2.5 top-1/2 -mt-5 w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20 shadow-md"
+                    hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                    style={{ zIndex: 30, elevation: 8 }}
+                    className="absolute right-2.5 top-1/2 -mt-5 w-10 h-10 rounded-full bg-black/70 items-center justify-center border border-white/20 shadow-md"
                   >
                     <ChevronRight size={22} color="#ffffff" />
                   </TouchableOpacity>
@@ -500,16 +527,19 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
 
                 {/* Dots indicator at bottom-center */}
                 {galleryImages.length > 1 && (
-                  <View className="absolute bottom-2.5 left-0 right-0 flex-row items-center justify-center gap-1.5">
+                  <View
+                    style={{ zIndex: 30, elevation: 8 }}
+                    className="absolute bottom-2.5 left-0 right-0 flex-row items-center justify-center gap-1.5"
+                  >
                     {galleryImages.map((_, idx) => (
                       <TouchableOpacity
                         key={idx}
                         onPress={() => setActiveImageIndex(idx)}
                         activeOpacity={0.7}
-                        className={`h-2 rounded-full ${
+                        className={`h-2.5 rounded-full ${
                           idx === activeImageIndex
                             ? "w-6 bg-amber-400"
-                            : "w-2 bg-white/60"
+                            : "w-2.5 bg-white/60"
                         }`}
                       />
                     ))}
@@ -520,7 +550,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                 <TouchableOpacity
                   onPress={() => setIsFullscreenModalOpen(true)}
                   activeOpacity={0.8}
-                  className="absolute top-2.5 right-2.5 bg-slate-900/75 backdrop-blur-md px-2.5 py-1.5 rounded-xl flex-row items-center gap-1 border border-white/10"
+                  style={{ zIndex: 30, elevation: 8 }}
+                  className="absolute top-2.5 right-2.5 bg-slate-900/80 backdrop-blur-md px-2.5 py-1.5 rounded-xl flex-row items-center gap-1 border border-white/10"
                 >
                   <Maximize2 size={12} color="#ffffff" />
                   <Text className="text-[11px] font-bold text-white">Full View</Text>
@@ -540,9 +571,13 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${
                           isSelected
-                            ? "border-amber-500 shadow-md scale-105"
+                            ? "border-amber-500 shadow-md"
                             : "border-slate-200 dark:border-slate-700 opacity-60"
                         }`}
+                        style={{
+                          borderColor: isSelected ? "#f59e0b" : "#cbd5e1",
+                          borderWidth: isSelected ? 2.5 : 1,
+                        }}
                       >
                         <Image
                           source={{ uri: imgUri }}
@@ -618,34 +653,40 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                 {service.address}
               </Text>
 
-              {/* Embedded Interactive Map Preview (WebView) */}
-              <View className="w-full h-48 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 mb-3 relative">
-                <WebView
-                  originWhitelist={["*"]}
-                  source={{
-                    html: getServiceMapHtml(
-                      serviceLat,
-                      serviceLng,
-                      service.name,
-                      currentUserLoc?.latitude,
-                      currentUserLoc?.longitude
-                    ),
-                  }}
-                  scrollEnabled={false}
-                  className="w-full h-full"
-                  onError={(err) => console.warn("Map load error:", err)}
-                />
+              {/* Embedded Interactive Map Preview (WebView - Tap opens Google Maps) */}
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={handleOpenMaps}
+                className="w-full h-48 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 mb-3 relative"
+              >
+                <View pointerEvents="none" style={{ width: "100%", height: "100%" }}>
+                  <WebView
+                    originWhitelist={["*"]}
+                    source={{
+                      html: getServiceMapHtml(
+                        serviceLat,
+                        serviceLng,
+                        service.name,
+                        currentUserLoc?.latitude,
+                        currentUserLoc?.longitude
+                      ),
+                    }}
+                    scrollEnabled={false}
+                    style={{ width: "100%", height: "100%" }}
+                    onError={(err) => console.warn("Map load error:", err)}
+                  />
+                </View>
 
                 {/* Floating Directions Button on Map */}
-                <TouchableOpacity
-                  onPress={handleOpenMaps}
-                  activeOpacity={0.85}
+                <View
+                  pointerEvents="none"
+                  style={{ zIndex: 10, elevation: 4 }}
                   className="absolute bottom-2.5 right-2.5 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl flex-row items-center shadow-md"
                 >
                   <Compass size={13} color="#ffffff" className="mr-1.5" />
                   <Text className="text-xs font-bold text-white">Full Map</Text>
-                </TouchableOpacity>
-              </View>
+                </View>
+              </TouchableOpacity>
 
               {/* Get Directions Button */}
               <TouchableOpacity
@@ -748,7 +789,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         </ScrollView>
 
         {/* Floating Bottom Booking / Call Bar */}
-        <View className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-5 py-3.5 flex-row items-center justify-between shadow-2xl">
+        <View
+          style={{ zIndex: 40, elevation: 12 }}
+          className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-5 py-3.5 flex-row items-center justify-between shadow-2xl"
+        >
           <TouchableOpacity
             onPress={handleOpenMaps}
             activeOpacity={0.8}
@@ -760,7 +804,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           <TouchableOpacity
             onPress={handleCall}
             activeOpacity={0.85}
-            className="flex-1 bg-primary py-3.5 px-4 rounded-2xl shadow-md shadow-amber-500/25 flex-row items-center justify-center active:bg-amber-500"
+            className="flex-1 bg-[#e0b328] py-3.5 px-4 rounded-2xl shadow-md shadow-amber-500/25 flex-row items-center justify-center active:bg-amber-500"
           >
             <PhoneCall size={17} color="#0f172a" className="mr-2" />
             <Text className="text-slate-950 font-black text-sm ml-1.5">
@@ -770,21 +814,22 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         </View>
       </View>
 
-      {/* Fullscreen Photo Viewer Modal */}
-      <Modal
-        visible={isFullscreenModalOpen}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsFullscreenModalOpen(false)}
-      >
-        <View className="flex-1 bg-black/95 justify-center items-center">
-          {/* Close button */}
-          <TouchableOpacity
-            onPress={() => setIsFullscreenModalOpen(false)}
-            className="absolute top-12 right-6 w-11 h-11 rounded-full bg-white/20 items-center justify-center z-10"
-          >
-            <X size={24} color="#ffffff" />
-          </TouchableOpacity>
+      {/* Fullscreen Photo Viewer Modal - only rendered when open */}
+      {isFullscreenModalOpen && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsFullscreenModalOpen(false)}
+        >
+          <View className="flex-1 bg-black/95 justify-center items-center">
+            {/* Close button */}
+            <TouchableOpacity
+              onPress={() => setIsFullscreenModalOpen(false)}
+              className="absolute top-12 right-6 w-11 h-11 rounded-full bg-white/20 items-center justify-center z-10"
+            >
+              <X size={24} color="#ffffff" />
+            </TouchableOpacity>
 
           {/* Counter at top */}
           {galleryImages.length > 1 && (
@@ -846,8 +891,9 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
               ))}
             </View>
           )}
-        </View>
-      </Modal>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
