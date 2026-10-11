@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Animated,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, MapPin, Navigation } from "lucide-react-native";
@@ -21,6 +23,104 @@ const RADIUS_OPTIONS = [
   { label: "Within 5 km", value: 5 },
   { label: "Within 10 km", value: 10 },
 ];
+
+// Shimmer Skeleton for Subcategory Card (exact geometry match)
+const SubcategorySkeletonCard: React.FC<{ animStyle: any }> = ({ animStyle }) => (
+  <View className="w-[48%] rounded-[6px] border border-slate-200/90 py-3 px-3 items-center justify-center mb-3.5 shadow-2xs bg-white">
+    <Animated.View
+      style={animStyle}
+      className="w-12 h-12 rounded-xl bg-slate-200/80 mb-2.5"
+    />
+    <Animated.View
+      style={animStyle}
+      className="w-20 h-3 rounded bg-slate-200/90 mb-1"
+    />
+    <Animated.View
+      style={animStyle}
+      className="w-12 h-2.5 rounded bg-slate-200/60"
+    />
+  </View>
+);
+
+// Shimmer Skeleton for Service Card (exact geometry match)
+const ServiceSkeletonCard: React.FC<{ animStyle: any }> = ({ animStyle }) => (
+  <View className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs mb-3 flex-row items-center">
+    {/* Left: Image / Logo */}
+    <Animated.View
+      style={animStyle}
+      className="w-[50px] h-[50px] rounded-2xl bg-slate-200/80 mr-3 shrink-0"
+    />
+
+    {/* Middle: Info */}
+    <View className="flex-1 justify-center pr-2">
+      <Animated.View
+        style={animStyle}
+        className="w-40 h-3.5 rounded bg-slate-200/90 mb-2"
+      />
+      <View className="flex-row items-center justify-between mb-2">
+        <Animated.View
+          style={animStyle}
+          className="w-24 h-2.5 rounded bg-slate-200/70"
+        />
+        <Animated.View
+          style={animStyle}
+          className="w-14 h-4 rounded-full bg-slate-100"
+        />
+      </View>
+      <Animated.View
+        style={animStyle}
+        className="w-32 h-2.5 rounded bg-slate-200/60 mb-1.5"
+      />
+      <Animated.View
+        style={animStyle}
+        className="w-20 h-2.5 rounded bg-slate-200/50"
+      />
+    </View>
+
+    {/* Right: Direct Call Button */}
+    <Animated.View
+      style={animStyle}
+      className="w-11 h-11 rounded-full bg-slate-200/70 shrink-0"
+    />
+  </View>
+);
+
+// Shimmer Skeleton for Proximity & Radius Filter Bar (exact geometry match)
+const FilterBarSkeleton: React.FC<{ animStyle: any }> = ({ animStyle }) => (
+  <View className="px-6 mb-3">
+    {/* Top Proximity Bar Line */}
+    <View className="flex-row items-center justify-between mb-2">
+      <Animated.View
+        style={animStyle}
+        className="w-36 h-3.5 rounded bg-slate-200/80"
+      />
+      <Animated.View
+        style={animStyle}
+        className="w-20 h-4 rounded-full bg-slate-200/70"
+      />
+    </View>
+
+    {/* Horizontal Radius Chips Row */}
+    <View className="flex-row py-1">
+      <Animated.View
+        style={animStyle}
+        className="w-20 h-7 rounded-full bg-slate-200/80 mr-2"
+      />
+      <Animated.View
+        style={animStyle}
+        className="w-24 h-7 rounded-full bg-slate-200/80 mr-2"
+      />
+      <Animated.View
+        style={animStyle}
+        className="w-24 h-7 rounded-full bg-slate-200/80 mr-2"
+      />
+      <Animated.View
+        style={animStyle}
+        className="w-24 h-7 rounded-full bg-slate-200/80"
+      />
+    </View>
+  </View>
+);
 
 interface CategoryDetailScreenProps {
   category: Category;
@@ -42,6 +142,88 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
   const [selectedRadius, setSelectedRadius] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Master coordinated fluid entrance animation
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  // Shimmer pulse animation for skeletons
+  const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 0.95,
+          duration: 750,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0.4,
+          duration: 750,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, []);
+
+  useEffect(() => {
+    animValue.setValue(0);
+    Animated.timing(animValue, {
+      toValue: 1,
+      duration: 520,
+      easing: Easing.bezier(0.16, 1, 0.3, 1), // Apple-grade ultra-smooth easeOutExpo
+      useNativeDriver: true,
+    }).start();
+  }, [category.id]);
+
+  // Choreographed interpolations for butter-smooth smart feel
+  const backBtnTranslateX = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-16, 0],
+  });
+  const backBtnOpacity = animValue.interpolate({
+    inputRange: [0, 0.45, 1],
+    outputRange: [0, 1, 1],
+  });
+
+  const iconScale = animValue.interpolate({
+    inputRange: [0, 0.5, 0.8, 1],
+    outputRange: [0.35, 1.15, 0.96, 1],
+  });
+  const iconOpacity = animValue.interpolate({
+    inputRange: [0, 0.25, 1],
+    outputRange: [0, 1, 1],
+  });
+  const iconTranslateY = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-18, 0],
+  });
+
+  const titleTranslateY = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-14, 0],
+  });
+  const titleOpacity = animValue.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [0, 1, 1],
+  });
+  const titleScale = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1],
+  });
+
+  const contentTranslateY = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [32, 0],
+  });
+  const contentOpacity = animValue.interpolate({
+    inputRange: [0, 0.4, 1],
+    outputRange: [0.5, 0.95, 1],
+  });
 
   // Load subcategories and all services for this category ordered by proximity
   const loadCategoryData = async (radius: number | null = selectedRadius) => {
@@ -72,33 +254,81 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
 
   return (
     <SafeAreaView className="flex-1 bg-[#e0b328]">
-      {/* Top Header with #e0b328 Color & Sleek Back Icon */}
+      {/* Top Header with #e0b328 Color & Smart Animated Category Emblem + Title */}
       <View className="bg-[#e0b328] px-6 pt-2 pb-5">
         <View className="flex-row items-center justify-between">
-          <TouchableOpacity
-            onPress={onBack}
-            activeOpacity={0.7}
-            className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+          {/* Back Icon Button with slide-in animation */}
+          <Animated.View
+            style={{
+              opacity: backBtnOpacity,
+              transform: [{ translateX: backBtnTranslateX }],
+            }}
           >
-            <ChevronLeft size={28} color="#0f172a" />
-          </TouchableOpacity>
-
-          <View className="flex-1 px-2 items-center">
-            <Text
-              className="text-lg font-black text-slate-900 tracking-tight text-center"
-              numberOfLines={1}
+            <TouchableOpacity
+              onPress={onBack}
+              activeOpacity={0.7}
+              className="w-10 h-10 rounded-full bg-black/5 items-center justify-center -ml-2 active:opacity-60"
             >
-              {category.name}
-            </Text>
+              <ChevronLeft size={28} color="#0f172a" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Animated Center Content: Category Icon Emblem + Name */}
+          <View className="flex-1 px-2 flex-row items-center justify-center">
+            {/* Pop-in Category Emblem Badge */}
+            <Animated.View
+              style={{
+                opacity: iconOpacity,
+                transform: [
+                  { translateY: iconTranslateY },
+                  { scale: iconScale },
+                ],
+              }}
+              className="w-9 h-9 rounded-2xl bg-white/75 border border-white items-center justify-center mr-2 shadow-xs overflow-hidden"
+            >
+              {category.image ? (
+                <Image
+                  source={{ uri: category.image }}
+                  className="w-6 h-6"
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text className="text-base">🛠️</Text>
+              )}
+            </Animated.View>
+
+            {/* Slide-in Title */}
+            <Animated.View
+              style={{
+                opacity: titleOpacity,
+                transform: [
+                  { translateY: titleTranslateY },
+                  { scale: titleScale },
+                ],
+              }}
+            >
+              <Text
+                className="text-lg font-black text-slate-900 tracking-tight text-center"
+                numberOfLines={1}
+              >
+                {category.name}
+              </Text>
+            </Animated.View>
           </View>
 
-          {/* Spacer */}
+          {/* Symmetrical Spacer */}
           <View className="w-10 h-10" />
         </View>
       </View>
 
-      {/* Curvy Content Container matching reference screenshot */}
-      <View className="flex-1 bg-slate-50 rounded-t-[36px] overflow-hidden">
+      {/* Curvy Content Container with coordinated slide-up entrance */}
+      <Animated.View
+        style={{
+          opacity: contentOpacity,
+          transform: [{ translateY: contentTranslateY }],
+        }}
+        className="flex-1 bg-slate-50 rounded-t-[36px] overflow-hidden"
+      >
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
@@ -112,10 +342,16 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
           }
         >
         {/* Subcategories Section (2-Column Grid matching Category Cards: flex-col, col2) */}
-        {subcategories.length > 0 && (
+        {loading && subcategories.length === 0 ? (
           <View className="px-6 mt-2 mb-6">
-           
-
+            <View className="flex-row flex-wrap justify-between">
+              {[1, 2, 3, 4].map((i) => (
+                <SubcategorySkeletonCard key={i} animStyle={{ opacity: shimmerAnim }} />
+              ))}
+            </View>
+          </View>
+        ) : subcategories.length > 0 ? (
+          <View className="px-6 mt-2 mb-6">
             {/* 2-Column Grid (Category Card Style: flex-col, col 2) */}
             <View className="flex-row flex-wrap justify-between">
               {subcategories.map((subCat) => {
@@ -155,68 +391,68 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
               })}
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* Location-Based Proximity & Radius Filter Bar */}
-        <View className="px-6 mb-3">
-          <View className="flex-row items-center justify-between mb-2">
-            <View className="flex-row items-center flex-1 mr-2">
-              <Navigation size={14} color="#d97706" />
-              <Text className="text-xs font-black text-slate-800 tracking-tight ml-1.5" numberOfLines={1}>
-                {userLocation?.area ? `Services near ${userLocation.area}` : "Services near you"}
-              </Text>
+        {loading ? (
+          <FilterBarSkeleton animStyle={{ opacity: shimmerAnim }} />
+        ) : (
+          <View className="px-6 mb-3">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1 mr-2">
+                <Navigation size={14} color="#d97706" />
+                <Text className="text-xs font-black text-slate-800 tracking-tight ml-1.5" numberOfLines={1}>
+                  {userLocation?.area ? `Services near ${userLocation.area}` : "Services near you"}
+                </Text>
+              </View>
+              <View className="bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
+                <Text className="text-[10px] font-extrabold text-amber-900">
+                  ⚡ Closest First
+                </Text>
+              </View>
             </View>
-            <View className="bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
-              <Text className="text-[10px] font-extrabold text-amber-900">
-                ⚡ Closest First
-              </Text>
-            </View>
-          </View>
 
-          {/* Circle Radius Filter Chips (All, < 1 km, < 2 km, < 5 km, < 10 km) */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingVertical: 4 }}
-          >
-            {RADIUS_OPTIONS.map((opt) => {
-              const isSelected = selectedRadius === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.label}
-                  activeOpacity={0.75}
-                  onPress={() => setSelectedRadius(opt.value)}
-                  className={`mr-2 px-3.5 py-1.5 rounded-full border flex-row items-center ${
-                    isSelected
-                      ? "bg-slate-900 border-slate-900 shadow-2xs"
-                      : "bg-white border-slate-200/90 active:bg-slate-100"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${
-                      isSelected ? "text-white" : "text-slate-600"
+            {/* Circle Radius Filter Chips (All, < 1 km, < 2 km, < 5 km, < 10 km) */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingVertical: 4 }}
+            >
+              {RADIUS_OPTIONS.map((opt) => {
+                const isSelected = selectedRadius === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    activeOpacity={0.75}
+                    onPress={() => setSelectedRadius(opt.value)}
+                    className={`mr-2 px-3.5 py-1.5 rounded-full border flex-row items-center ${
+                      isSelected
+                        ? "bg-slate-900 border-slate-900 shadow-2xs"
+                        : "bg-white border-slate-200/90 active:bg-slate-100"
                     }`}
                   >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Loading Indicator */}
-        {loading && (
-          <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="small" color="#e0b328" />
-            <Text className="text-xs text-slate-400 mt-2 font-medium">
-              Loading services...
-            </Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        isSelected ? "text-white" : "text-slate-600"
+                      }`}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
         )}
 
-        {/* Services List / Cards */}
-        {!loading && services.length === 0 ? (
+        {/* Services List / Skeletons (Prevents layout displacement) */}
+        {loading ? (
+          <View className="px-6 mb-20">
+            {[1, 2, 3, 4].map((i) => (
+              <ServiceSkeletonCard key={i} animStyle={{ opacity: shimmerAnim }} />
+            ))}
+          </View>
+        ) : services.length === 0 ? (
           <View className="py-16 px-6 items-center justify-center">
             <Text className="text-3xl mb-2">🔍</Text>
             <Text className="text-sm font-bold text-slate-700">
@@ -238,7 +474,7 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
           </View>
         )}
       </ScrollView>
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 };
