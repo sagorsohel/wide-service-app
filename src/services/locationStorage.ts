@@ -61,3 +61,54 @@ export async function clearUserLocation(): Promise<void> {
     console.warn("[LocationStorage] Error clearing location locally:", error);
   }
 }
+
+// -------------------------------------------------------------
+// Splash / Onboarding Screen Local Storage (true/false)
+// -------------------------------------------------------------
+const HAS_SEEN_SPLASH_KEY = "@wide_service_has_seen_splash";
+let memoryHasSeenSplashCache: boolean | null = null;
+
+/**
+ * Check whether the user has already seen the splash screen.
+ * Returns true if true in local storage, false otherwise.
+ */
+export async function getHasSeenSplash(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(HAS_SEEN_SPLASH_KEY);
+    if (val !== null) {
+      const parsed = val === "true";
+      memoryHasSeenSplashCache = parsed;
+      return parsed;
+    }
+  } catch (error) {
+    console.warn("[Storage] Error reading splash state locally:", error);
+  }
+  return memoryHasSeenSplashCache ?? false;
+}
+
+/**
+ * Persist the splash seen status (true or false) in AsyncStorage.
+ */
+export async function setHasSeenSplash(seen: boolean = true): Promise<void> {
+  try {
+    memoryHasSeenSplashCache = seen;
+    await AsyncStorage.setItem(HAS_SEEN_SPLASH_KEY, seen ? "true" : "false");
+  } catch (error) {
+    console.warn("[Storage] Error saving splash state locally:", error);
+    memoryHasSeenSplashCache = seen;
+  }
+}
+
+/**
+ * Reset the splash seen status (returns back to false).
+ */
+export async function resetHasSeenSplash(): Promise<void> {
+  try {
+    memoryHasSeenSplashCache = false;
+    await AsyncStorage.removeItem(HAS_SEEN_SPLASH_KEY);
+  } catch (error) {
+    console.warn("[Storage] Error resetting splash state locally:", error);
+    memoryHasSeenSplashCache = false;
+  }
+}
+

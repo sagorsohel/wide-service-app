@@ -1,5 +1,6 @@
 import "./global.css";
 import React, { useState, useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SplashScreen } from "./src/components/SplashScreen";
 import { LocationPickerScreen } from "./src/components/LocationPickerScreen";
@@ -8,27 +9,67 @@ import { CategoryDetailScreen } from "./src/components/CategoryDetailScreen";
 import { SubcategoryDetailScreen } from "./src/components/SubcategoryDetailScreen";
 import { ServiceDetailScreen } from "./src/components/ServiceDetailScreen";
 import { Category, Subcategory, Service, UserLocation } from "./src/types";
-import { getUserLocation } from "./src/services/locationStorage";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  getUserLocation,
+  getHasSeenSplash,
+  setHasSeenSplash,
+} from "./src/services/locationStorage";
 
 export default function App() {
+  const [isInitializing, setIsInitializing] = useState(true);
   const [currentScreen, setCurrentScreen] = useState<"splash" | "location" | "home">("splash");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-  // Load saved location on startup
+  // Check saved location and whether the user has already seen splash screen
   useEffect(() => {
-    getUserLocation().then((savedLoc) => {
-      if (savedLoc) {
-        setUserLocation(savedLoc);
+    let isMounted = true;
+
+    async function initApp() {
+      try {
+        const [savedLoc, hasSeenSplash] = await Promise.all([
+          getUserLocation(),
+          getHasSeenSplash(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (savedLoc) {
+          setUserLocation(savedLoc);
+        }
+
+        // If user has already seen the splash screen in a previous session
+        if (hasSeenSplash) {
+          setCurrentScreen(savedLoc ? "home" : "location");
+        } else {
+          // First-time user: show splash screen
+          setCurrentScreen("splash");
+        }
+      } catch (error) {
+        console.warn("[App] Error initializing app storage state:", error);
+      } finally {
+        if (isMounted) {
+          setIsInitializing(false);
+        }
       }
-    });
+    }
+
+    initApp();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // When user taps Get Started on splash:
-  // If location is already set once, go straight to home! Never ask again!
   const handleGetStarted = async () => {
+    // 1. Mark splash screen as seen (stored as true in local storage)
+    await setHasSeenSplash(true);
+
+    // 2. If location is already set once, go straight to home! Otherwise ask location
     const loc = userLocation || (await getUserLocation());
     if (loc) {
       setUserLocation(loc);
@@ -39,8 +80,20 @@ export default function App() {
     }
   };
 
+  // Prevent UI flicker while reading initial storage
+  if (isInitializing) {
+    return (
+      <SafeAreaProvider>
+        <View className="flex-1 bg-white items-center justify-center">
+          <StatusBar style="dark" />
+          <ActivityIndicator size="small" color="#e0b328" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="dark" />
 
       {currentScreen === "splash" ? (
@@ -48,7 +101,7 @@ export default function App() {
       ) : currentScreen === "location" ? (
         <LocationPickerScreen
           currentLocation={userLocation}
-          onBack={userLocation ? () => setCurrentScreen("home") : () => setCurrentScreen("splash")}
+          onBack={userLocation ? () => setCurrentScreen("home") : undefined}
           onLocationSelected={(loc) => {
             setUserLocation(loc);
             setCurrentScreen("home");
@@ -87,10 +140,10 @@ export default function App() {
             setSelectedCategory(cat);
             setSelectedSubcategory(null);
           }}
-          onBackToSplash={() => setCurrentScreen("splash")}
         />
       )}
-    </>
+    </SafeAreaProvider>
   );
 }
+
 

@@ -10,7 +10,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Search,
   Bell,
@@ -84,7 +84,6 @@ interface HomeScreenProps {
   onChangeLocation?: () => void;
   onSelectService: (service: Service) => void;
   onSelectCategory: (category: Category) => void;
-  onBackToSplash?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -92,8 +91,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onChangeLocation,
   onSelectCategory,
   onSelectService,
-  onBackToSplash,
 }) => {
+  const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,16 +204,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-[#f8fafc]">
+    <SafeAreaView className="flex-1 bg-[#f8fafc]" edges={["top", "left", "right"]}>
       {activeTab === "setting" ? (
         <SettingsScreen
           userLocation={userLocation}
-          onChangeLocation={onChangeLocation || onBackToSplash || (() => {})}
+          onChangeLocation={onChangeLocation || (() => {})}
         />
       ) : (
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingBottom: Math.max(insets.bottom, 12) + 85,
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -233,7 +235,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         >
           <View className="flex-1 mr-3">
             <TouchableOpacity
-              onPress={onChangeLocation || onBackToSplash}
+              onPress={onChangeLocation}
               activeOpacity={0.7}
               className="flex-row items-center space-x-1"
             >
@@ -243,7 +245,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <Text className="text-primary text-xs font-bold ml-1">▾</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={onChangeLocation || onBackToSplash}
+              onPress={onChangeLocation}
               activeOpacity={0.8}
             >
               <Text
@@ -391,66 +393,97 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </ScrollView>
       )}
 
-      {/* Elevated Floating Bottom Navigation Bar (Home & Settings Only) */}
+      {/* Full-Width Edge-to-Edge Bottom Navigation Bar */}
       <View
-        className="absolute bottom-5 left-8 right-8 bg-white/95 backdrop-blur-md py-2 px-4 rounded-full flex-row items-center justify-around border border-slate-200/90 shadow-xl"
+        className="absolute bottom-0 left-0 right-0 bg-white/95 border-t border-slate-200/80"
         style={{
-          elevation: 10,
+          paddingBottom: Math.max(insets.bottom, 12),
+          elevation: 20,
           shadowColor: "#0f172a",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.15,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
           shadowRadius: 14,
         }}
       >
-        {/* Home Tab */}
-        <TouchableOpacity
-          onPress={() => setActiveTab("home")}
-          activeOpacity={0.8}
-          className={`flex-row items-center py-2 px-5 rounded-full ${
-            activeTab === "home"
-              ? "bg-amber-100/90 border border-amber-300"
-              : "bg-transparent"
-          }`}
-        >
-          <Home
-            size={19}
-            color={activeTab === "home" ? "#b45309" : "#64748b"}
-          />
-          <Text
-            className={`text-xs ml-2 ${
+        <View className="flex-row items-center justify-between px-5 pt-2.5">
+          {/* Home Tab */}
+          <TouchableOpacity
+            onPress={() => setActiveTab("home")}
+            activeOpacity={0.7}
+            className={`flex-1 flex-row items-center justify-center py-2.5 px-4 mx-1.5 rounded-2xl ${
               activeTab === "home"
-                ? "text-amber-950 font-black"
-                : "text-slate-500 font-bold"
+                ? "bg-[#e0b328]/15 border border-[#e0b328]/60 shadow-2xs"
+                : "bg-slate-50/80 border border-slate-200/50"
             }`}
           >
-            Home
-          </Text>
-        </TouchableOpacity>
+            <View
+              className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${
+                activeTab === "home"
+                  ? "bg-[#e0b328] shadow-xs"
+                  : "bg-white border border-slate-200/60"
+              }`}
+            >
+              <Home
+                size={17}
+                color={activeTab === "home" ? "#0f172a" : "#64748b"}
+                strokeWidth={activeTab === "home" ? 2.6 : 2}
+              />
+            </View>
+            <View>
+              <Text
+                className={`text-xs tracking-tight ${
+                  activeTab === "home"
+                    ? "font-black text-slate-900"
+                    : "font-bold text-slate-500"
+                }`}
+              >
+                Home
+              </Text>
+              {activeTab === "home" && (
+                <View className="w-3.5 h-0.5 rounded-full bg-[#e0b328] mt-0.5" />
+              )}
+            </View>
+          </TouchableOpacity>
 
-        {/* Settings Tab */}
-        <TouchableOpacity
-          onPress={() => setActiveTab("setting")}
-          activeOpacity={0.8}
-          className={`flex-row items-center py-2 px-5 rounded-full ${
-            activeTab === "setting"
-              ? "bg-amber-100/90 border border-amber-300"
-              : "bg-transparent"
-          }`}
-        >
-          <Settings
-            size={19}
-            color={activeTab === "setting" ? "#b45309" : "#64748b"}
-          />
-          <Text
-            className={`text-xs ml-2 ${
+          {/* Settings Tab */}
+          <TouchableOpacity
+            onPress={() => setActiveTab("setting")}
+            activeOpacity={0.7}
+            className={`flex-1 flex-row items-center justify-center py-2.5 px-4 mx-1.5 rounded-2xl ${
               activeTab === "setting"
-                ? "text-amber-950 font-black"
-                : "text-slate-500 font-bold"
+                ? "bg-[#e0b328]/15 border border-[#e0b328]/60 shadow-2xs"
+                : "bg-slate-50/80 border border-slate-200/50"
             }`}
           >
-            Settings
-          </Text>
-        </TouchableOpacity>
+            <View
+              className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${
+                activeTab === "setting"
+                  ? "bg-[#e0b328] shadow-xs"
+                  : "bg-white border border-slate-200/60"
+              }`}
+            >
+              <Settings
+                size={17}
+                color={activeTab === "setting" ? "#0f172a" : "#64748b"}
+                strokeWidth={activeTab === "setting" ? 2.6 : 2}
+              />
+            </View>
+            <View>
+              <Text
+                className={`text-xs tracking-tight ${
+                  activeTab === "setting"
+                    ? "font-black text-slate-900"
+                    : "font-bold text-slate-500"
+                }`}
+              >
+                Settings
+              </Text>
+              {activeTab === "setting" && (
+                <View className="w-3.5 h-0.5 rounded-full bg-[#e0b328] mt-0.5" />
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
