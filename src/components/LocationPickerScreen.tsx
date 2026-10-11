@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   Platform,
   Alert,
@@ -23,6 +24,14 @@ import * as Location from "expo-location";
 import { UserLocation } from "../types";
 import { saveUserLocation, DEFAULT_LOCATION } from "../services/locationStorage";
 
+export interface OsmPlace {
+  place_id: number | string;
+  display_name: string;
+  lat: string;
+  lon: string;
+  name?: string;
+}
+
 interface LocationPickerScreenProps {
   currentLocation?: UserLocation | null;
   onBack?: () => void;
@@ -41,51 +50,22 @@ const QUICK_CITIES = [
 ];
 
 /**
- * Generates interactive in-app Google Maps HTML with 100% dynamic, exact reverse geocoding
+ * Interactive Google Maps HTML with Tap-to-Place Marker & Draggable Pin.
+ * Exact same proven, rock-solid architecture used in go-track.
  */
 function getMapHtml(initialLat: number, initialLng: number): string {
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=25.0, user-scalable=yes" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body, #map { width: 100%; height: 100%; overflow: hidden; background: #e5e3df; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .leaflet-container { cursor: crosshair; }
     
-    /* Center Pin Container (Uber & Google Maps style with lift & bounce) */
-    .center-pin-wrapper {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -100%);
-      pointer-events: none;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    .center-pin-wrapper.dragging {
-      transform: translate(-50%, -125%) scale(1.08);
-    }
-    .pin-head {
-      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.38));
-    }
-    .pin-shadow {
-      width: 14px;
-      height: 6px;
-      background: rgba(0,0,0,0.25);
-      border-radius: 50%;
-      margin-top: 2px;
-      transition: all 0.15s ease-out;
-    }
-    .center-pin-wrapper.dragging .pin-shadow {
-      transform: scale(0.65);
-      opacity: 0.15;
-    }
-
     /* Google Maps Layer Switcher */
     .layer-control {
       position: absolute;
@@ -114,49 +94,15 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       color: #0f172a;
     }
 
-    /* Loading geocode indicator */
-    .loading-pill {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(8px);
-      color: white;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      display: none;
-      align-items: center;
-      gap: 6px;
-    }
-    .loading-pill.show {
-      display: flex;
-    }
-    .spinner {
-      width: 12px;
-      height: 12px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #e0b328;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Floating instruction badge */
-    .target-hint {
+    /* Floating Tap-Hint Badge */
+    .tap-hint {
       position: absolute;
       top: 14px;
       left: 14px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(4px);
-      padding: 6px 11px;
+      padding: 6px 12px;
       border-radius: 14px;
       font-size: 11px;
       font-weight: 700;
@@ -166,9 +112,44 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       align-items: center;
       gap: 5px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      pointer-events: none;
     }
 
-    /* Beautiful Leaflet Zoom Controls */
+    /* Loading geocode indicator */
+    .loading-pill {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px 16px;
+      border-radius: 20px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      display: none;
+      align-items: center;
+      gap: 7px;
+    }
+    .loading-pill.show {
+      display: flex;
+    }
+    .spinner {
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #e0b328;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Leaflet zoom controls */
     .leaflet-control-zoom {
       border: none !important;
       box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
@@ -188,7 +169,6 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       color: #0f172a !important;
       background: #ffffff !important;
       border-bottom: 1px solid #f1f5f9 !important;
-      transition: all 0.15s ease !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -196,28 +176,14 @@ function getMapHtml(initialLat: number, initialLng: number): string {
     .leaflet-control-zoom a:last-child {
       border-bottom: none !important;
     }
-    .leaflet-control-zoom a:hover, .leaflet-control-zoom a:active {
-      background: #fefce8 !important;
-      color: #b45309 !important;
-    }
-
-    .leaflet-control-attribution {
-      background: rgba(255, 255, 255, 0.75) !important;
-      backdrop-filter: blur(4px) !important;
-      border-radius: 6px !important;
-      padding: 1px 6px !important;
-      font-size: 9px !important;
-      color: #64748b !important;
-      margin: 4px !important;
-    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
   <!-- Instruction Badge -->
-  <div class="target-hint">
-    <span>📍 Drag map to set pin</span>
+  <div class="tap-hint">
+    <span>📍 Tap anywhere on map to drop pin</span>
   </div>
 
   <!-- Google Maps Mode Switcher -->
@@ -226,35 +192,24 @@ function getMapHtml(initialLat: number, initialLng: number): string {
     <button id="btn-satellite" class="layer-btn" onclick="switchLayer('satellite')">🛰️ Satellite</button>
   </div>
 
-  <!-- Interactive Center Pin (Uber / Google Maps Pin) -->
-  <div id="center-pin" class="center-pin-wrapper">
-    <svg class="pin-head" width="38" height="48" viewBox="0 0 38 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M19 0C8.50659 0 0 8.50659 0 19C0 32.25 16.625 46.5 17.375 47.125C17.875 47.5 18.4375 47.75 19 47.75C19.5625 47.75 20.125 47.5 20.625 47.125C21.375 46.5 38 32.25 38 19C38 8.50659 29.4934 0 19 0Z" fill="#e0b328"/>
-      <circle cx="19" cy="18" r="8" fill="#0f172a"/>
-      <circle cx="19" cy="18" r="4.5" fill="#ffffff"/>
-    </svg>
-    <div class="pin-shadow"></div>
-  </div>
-
   <!-- Loading Geocode Pill -->
   <div id="loading-pill" class="loading-pill">
     <div class="spinner"></div>
-    <span>Detecting address...</span>
+    <span>Detecting place name...</span>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     var currentLat = ${initialLat};
     var currentLng = ${initialLng};
 
-    // 100% Free Google Maps Tiles
+    // Google Maps Roadmap Layer (up to zoom 22 for extreme high-precision)
     var streetLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-      maxZoom: 20,
+      maxZoom: 22,
       attribution: '© Google Maps'
     });
 
     var satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-      maxZoom: 20,
+      maxZoom: 22,
       attribution: '© Google Maps'
     });
 
@@ -266,14 +221,6 @@ function getMapHtml(initialLat: number, initialLng: number): string {
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    if (map.attributionControl) {
-      map.attributionControl.setPosition('bottomleft');
-    }
-
-    var pinEl = document.getElementById('center-pin');
-    var loadingEl = document.getElementById('loading-pill');
-    var geocodeTimeout = null;
 
     function switchLayer(type) {
       if (type === 'satellite') {
@@ -289,6 +236,8 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       }
     }
 
+    var loadingEl = document.getElementById('loading-pill');
+
     function notifyParent(data) {
       var msg = JSON.stringify(data);
       if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
@@ -299,112 +248,60 @@ function getMapHtml(initialLat: number, initialLng: number): string {
       }
     }
 
-    // 100% Dynamic Exact Reverse Geocoding
-    function reverseGeocode(lat, lng) {
-      loadingEl.classList.add('show');
+    // Custom Interactive Yellow Pin Marker with Shadow
+    var pinSvg = '<div style="position:relative;width:38px;height:48px;cursor:pointer;">' +
+      '<svg width="38" height="48" viewBox="0 0 38 48" fill="none" style="filter:drop-shadow(0 4px 6px rgba(0,0,0,0.38));">' +
+        '<path d="M19 0C8.50659 0 0 8.50659 0 19C0 32.25 16.625 46.5 17.375 47.125C17.875 47.5 18.4375 47.75 19 47.75C19.5625 47.75 20.125 47.5 20.625 47.125C21.375 46.5 38 32.25 38 19C38 8.50659 29.4934 0 19 0Z" fill="#e0b328"/>' +
+        '<circle cx="19" cy="18" r="8" fill="#0f172a"/>' +
+        '<circle cx="19" cy="18" r="4.5" fill="#ffffff"/>' +
+      '</svg>' +
+    '</div>';
 
-      // 1. Primary Dynamic Engine: Photon POI Reverse Lookup (detects exact building, hospital, shop, pharmacy, etc.)
-      var photonUrl = 'https://photon.komoot.io/reverse?lat=' + lat + '&lon=' + lng;
-      fetch(photonUrl, {
-        headers: { 'User-Agent': 'WideServiceApp/1.0', 'Accept': 'application/json' }
-      })
-      .then(function(res) {
-        if (!res.ok) throw new Error('Photon error');
-        return res.json();
-      })
-      .then(function(data) {
-        var p = data && data.features && data.features[0] && data.features[0].properties;
-        if (p && (p.name || p.street)) {
-          loadingEl.classList.remove('show');
-          var area = p.name || p.street || p.district || 'Selected Location';
-          var street = p.street || '';
-          var district = p.district || '';
-          var city = p.city || p.county || p.state || 'Bangladesh';
-          var rawParts = [p.name, street, district, city].filter(Boolean);
-          var parts = rawParts.filter(function(item, pos) {
-            return rawParts.indexOf(item) === pos;
-          });
-          var address = parts.join(', ');
+    var pinIcon = L.divIcon({
+      className: 'custom-interactive-pin',
+      html: pinSvg,
+      iconSize: [38, 48],
+      iconAnchor: [19, 48]
+    });
 
-          notifyParent({
-            type: 'LOCATION_CHANGED',
-            latitude: lat,
-            longitude: lng,
-            address: address,
-            area: area,
-            city: city
-          });
-          return;
-        }
-        throw new Error('No named POI in Photon');
-      })
-      .catch(function() {
-        // 2. Secondary Dynamic Fallback: OpenStreetMap Nominatim
-        var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=19&addressdetails=1';
-        fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'WideServiceApp/1.0' } })
-          .then(function(res) { return res.json(); })
-          .then(function(data) {
-            loadingEl.classList.remove('show');
-            var address = 'Selected Location';
-            var area = 'Selected Area';
-            var city = 'Bangladesh';
-            if (data) {
-              var addr = data.address || {};
-              area = data.name || addr.amenity || addr.shop || addr.building || addr.road || addr.neighbourhood || addr.suburb || addr.quarter || addr.village || 'Selected Area';
-              city = addr.city || addr.town || addr.district || addr.state || 'Bangladesh';
-              var rawParts = [data.name || addr.road, addr.neighbourhood || addr.suburb, city].filter(Boolean);
-              var parts = rawParts.filter(function(item, pos) {
-                return rawParts.indexOf(item) === pos;
-              });
-              address = parts.join(', ') || data.display_name.split(',').slice(0, 3).join(', ');
-            }
+    // Draggable Marker placed right at target
+    var marker = L.marker([currentLat, currentLng], {
+      icon: pinIcon,
+      draggable: true
+    }).addTo(map);
 
-            notifyParent({
-              type: 'LOCATION_CHANGED',
-              latitude: lat,
-              longitude: lng,
-              address: address,
-              area: area,
-              city: city
-            });
-          })
-          .catch(function() {
-            loadingEl.classList.remove('show');
-            notifyParent({
-              type: 'LOCATION_CHANGED',
-              latitude: lat,
-              longitude: lng,
-              address: 'Pinpoint (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')',
-              area: 'Pinned Spot',
-              city: 'Bangladesh'
-            });
-          });
+    // When marker is dragged and dropped
+    marker.on('dragend', function() {
+      var pos = marker.getLatLng();
+      notifyParent({
+        type: 'PIN_SELECTED',
+        latitude: pos.lat,
+        longitude: pos.lng
       });
-    }
-
-    map.on('movestart', function() {
-      pinEl.classList.add('dragging');
-      notifyParent({ type: 'PIN_MOVED' });
     });
 
-    map.on('moveend', function() {
-      pinEl.classList.remove('dragging');
-      var center = map.getCenter();
-      clearTimeout(geocodeTimeout);
-      geocodeTimeout = setTimeout(function() {
-        reverseGeocode(center.lat, center.lng);
-      }, 300);
-    });
-
+    // When user TAPS ANYWHERE on the map (just like go-track)
     map.on('click', function(e) {
-      map.panTo(e.latlng);
+      marker.setLatLng(e.latlng);
+      notifyParent({
+        type: 'PIN_SELECTED',
+        latitude: e.latlng.lat,
+        longitude: e.latlng.lng
+      });
     });
 
     function handleParentMessage(event) {
       try {
         var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (data && data.type === 'FLY_TO') {
-          map.flyTo([data.latitude, data.longitude], data.zoom || 17);
+        if (data && data.type === 'MOVE_PIN') {
+          marker.setLatLng([data.latitude, data.longitude]);
+          map.setView([data.latitude, data.longitude], data.zoom || 17, { animate: true });
+        } else if (data && data.type === 'SET_LOADING') {
+          if (data.show) {
+            loadingEl.classList.add('show');
+          } else {
+            loadingEl.classList.remove('show');
+          }
         }
       } catch(e) {}
     }
@@ -412,8 +309,13 @@ function getMapHtml(initialLat: number, initialLng: number): string {
     window.addEventListener('message', handleParentMessage);
     document.addEventListener('message', handleParentMessage);
 
+    // Initial emit
     setTimeout(function() {
-      reverseGeocode(currentLat, currentLng);
+      notifyParent({
+        type: 'PIN_SELECTED',
+        latitude: currentLat,
+        longitude: currentLng
+      });
     }, 350);
   </script>
 </body>
@@ -429,6 +331,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   const initialLng = currentLocation?.longitude || DEFAULT_LOCATION.longitude || 90.4125;
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<OsmPlace[]>([]);
   const [customAreaName, setCustomAreaName] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameInput, setEditNameInput] = useState("");
@@ -437,11 +340,14 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   );
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // Send flyTo command to in-app Google Maps
-  const flyToCoordinates = (lat: number, lng: number, zoom = 17) => {
-    const payload = JSON.stringify({ type: "FLY_TO", latitude: lat, longitude: lng, zoom });
+  const webViewRef = useRef<WebView>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Send message to WebView map
+  const sendMapMessage = (msgObj: any) => {
+    const payload = JSON.stringify(msgObj);
 
     if (Platform.OS === "web" && typeof document !== "undefined") {
       const iframe = document.getElementById("inapp-google-map") as HTMLIFrameElement;
@@ -455,37 +361,158 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     }
   };
 
-  // Handle dynamic location update messages from map
-  const handleLocationUpdate = (data: any) => {
-    if (!data) return;
+  // Move pin and center map
+  const movePinTo = (lat: number, lng: number, zoom = 17) => {
+    sendMapMessage({ type: "MOVE_PIN", latitude: lat, longitude: lng, zoom });
+  };
 
-    if (data.type === "PIN_MOVED") {
-      setCustomAreaName(null);
-      return;
+  /**
+   * Reverse Geocode (Exact same clean approach as go-track with Photon & Nominatim)
+   */
+  const handleLocationCoordinates = async (lat: number, lng: number) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-    if (data.type === "LOCATION_CHANGED") {
-      const finalArea = customAreaName || data.area;
-      const finalAddress = customAreaName || data.address;
-      const finalCity = data.city || "Bangladesh";
+    setIsGeocoding(true);
+    sendMapMessage({ type: "SET_LOADING", show: true });
 
-      setSelectedLoc({
-        address: finalAddress,
-        area: finalArea,
-        city: finalCity,
-        latitude: data.latitude,
-        longitude: data.longitude,
+    try {
+      // 1. Photon POI Reverse Lookup
+      try {
+        const photonRes = await fetch(
+          `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`,
+          {
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+              "User-Agent": "WideServiceApp/1.0 (contact@widetechbd.com)",
+            },
+          }
+        );
+
+        if (photonRes.ok) {
+          const photonData = await photonRes.json();
+          const f = photonData.features?.[0];
+          const p = f?.properties;
+
+          if (p) {
+            const rawName =
+              p.name && !/^\d{4,6}$/.test(p.name.trim()) ? p.name.trim() : null;
+            const street = p.street?.trim() || null;
+            const district = p.district?.trim() || null;
+            const city =
+              p.city?.trim() ||
+              p.county?.trim() ||
+              p.state?.trim() ||
+              "Bangladesh";
+
+            const primaryPoi = rawName || street || district || "Selected Location";
+            const rawParts = [rawName, street, district, city].filter(Boolean) as string[];
+            const parts = rawParts.filter((item, pos) => rawParts.indexOf(item) === pos);
+            const fullAddress = parts.join(", ") || primaryPoi;
+
+            setSelectedLoc((prev) => ({
+              ...prev,
+              latitude: lat,
+              longitude: lng,
+              area: customAreaName || primaryPoi,
+              address: customAreaName || fullAddress,
+              city: city,
+              isCurrentGps: false,
+            }));
+            return;
+          }
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+      }
+
+      // 2. OpenStreetMap Nominatim JSON Reverse Lookup (go-track style)
+      try {
+        const nomRes = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+          {
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+              "User-Agent": "GoTrackApp/1.0",
+            },
+          }
+        );
+
+        if (nomRes.ok) {
+          const data = await nomRes.json();
+          const addr = data.address || {};
+          const poi =
+            data.name ||
+            addr.amenity ||
+            addr.shop ||
+            addr.building ||
+            addr.road ||
+            addr.neighbourhood ||
+            addr.suburb ||
+            "Selected Location";
+          const city =
+            addr.city || addr.town || addr.district || addr.state || "Bangladesh";
+          const displayName = data.display_name || poi;
+
+          setSelectedLoc((prev) => ({
+            ...prev,
+            latitude: lat,
+            longitude: lng,
+            area: customAreaName || poi,
+            address: customAreaName || displayName,
+            city: city,
+            isCurrentGps: false,
+          }));
+          return;
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+      }
+
+      // Fallback
+      setSelectedLoc((prev) => ({
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+        area: customAreaName || "Pinned Location",
+        address:
+          customAreaName || `Pinned Spot (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+        city: "Bangladesh",
         isCurrentGps: false,
-      });
+      }));
+    } finally {
+      setIsGeocoding(false);
+      sendMapMessage({ type: "SET_LOADING", show: false });
     }
   };
 
-  // Listen to messages on Web platform
+  // Handle messages received from map (Tap or Drag)
+  const handleLocationUpdate = (data: any) => {
+    if (!data) return;
+
+    if (data.type === "PIN_SELECTED") {
+      setCustomAreaName(null);
+      if (
+        typeof data.latitude === "number" &&
+        typeof data.longitude === "number"
+      ) {
+        handleLocationCoordinates(data.latitude, data.longitude);
+      }
+    }
+  };
+
+  // Web platform event listener
   useEffect(() => {
     if (Platform.OS === "web" && typeof window !== "undefined") {
       const handleWebMessage = (event: MessageEvent) => {
         try {
-          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          const data =
+            typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           handleLocationUpdate(data);
         } catch (e) {}
       };
@@ -495,7 +522,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     }
   }, [customAreaName]);
 
-  // Handle messages on Native WebView
+  // Native WebView event listener
   const handleNativeMessage = (event: WebViewMessageEvent) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -503,17 +530,73 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     } catch (e) {}
   };
 
-  // Live GPS button action
+  // Live Autocomplete Search Input Change (same as go-track searchOpenStreetMap)
+  const handleSearchQueryChange = async (text: string) => {
+    setSearchQuery(text);
+    if (text.trim().length >= 2) {
+      setIsSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            text.trim()
+          )}&limit=5`,
+          {
+            headers: {
+              "User-Agent": "GoTrackApp/1.0",
+            },
+          }
+        );
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setSuggestions(data);
+        }
+      } catch (e) {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  // User taps a search suggestion from dropdown
+  const handleSelectSuggestion = (place: OsmPlace) => {
+    const lat = parseFloat(place.lat);
+    const lng = parseFloat(place.lon);
+    setSearchQuery(place.display_name);
+    setSuggestions([]);
+    setCustomAreaName(null);
+
+    const title = place.name || place.display_name.split(",")[0].trim();
+    setSelectedLoc({
+      address: place.display_name,
+      area: title,
+      city: "Bangladesh",
+      latitude: lat,
+      longitude: lng,
+      isCurrentGps: false,
+    });
+
+    movePinTo(lat, lng, 18);
+  };
+
+  // Live GPS button handler
   const handleDetectCurrentLocation = async () => {
     setIsDetectingGps(true);
     setCustomAreaName(null);
     try {
-      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.geolocation) {
+      if (
+        Platform.OS === "web" &&
+        typeof navigator !== "undefined" &&
+        navigator.geolocation
+      ) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-            flyToCoordinates(lat, lng, 17);
+            movePinTo(lat, lng, 18);
+            handleLocationCoordinates(lat, lng);
             setIsDetectingGps(false);
           },
           (err) => {
@@ -528,7 +611,10 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission Denied", "Please allow location permission to detect your current position.");
+        Alert.alert(
+          "Permission Denied",
+          "Please allow location permission to detect your current position."
+        );
         setIsDetectingGps(false);
         return;
       }
@@ -539,7 +625,8 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
 
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
-      flyToCoordinates(lat, lng, 17);
+      movePinTo(lat, lng, 18);
+      handleLocationCoordinates(lat, lng);
     } catch (err) {
       console.warn("GPS detection error:", err);
     } finally {
@@ -547,7 +634,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     }
   };
 
-  // Apply custom name directly
+  // Apply custom location name manually
   const handleApplyCustomName = (name?: string) => {
     const query = (name || searchQuery).trim();
     if (!query) return;
@@ -559,82 +646,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     }));
   };
 
-  // Dynamic live search for ANY place, address, or POI worldwide
-  const handleSearchSubmit = async () => {
-    const query = searchQuery.trim();
-    if (!query) return;
-    setIsSearching(true);
-    setCustomAreaName(query);
-
-    // 1. Try Photon Search first (accurate POI, building, and road search)
-    try {
-      const photonRes = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`,
-        { headers: { "User-Agent": "WideServiceApp/1.0", "Accept": "application/json" } }
-      );
-      if (photonRes.ok) {
-        const json = await photonRes.json();
-        const f = json.features?.[0];
-        if (f && f.geometry?.coordinates) {
-          const lng = f.geometry.coordinates[0];
-          const lat = f.geometry.coordinates[1];
-          const p = f.properties || {};
-          const area = p.name || query;
-          const address = [p.name, p.street, p.district, p.city].filter(Boolean).join(", ");
-          flyToCoordinates(lat, lng, 17);
-          setSelectedLoc({
-            address: address || query,
-            area: area,
-            city: p.city || "Bangladesh",
-            latitude: lat,
-            longitude: lng,
-            isCurrentGps: false,
-          });
-          setIsSearching(false);
-          return;
-        }
-      }
-    } catch (err) {}
-
-    // 2. Secondary Dynamic Search: OpenStreetMap Nominatim
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          query
-        )}&limit=1`,
-        { headers: { "User-Agent": "WideServiceApp/1.0" } }
-      );
-      if (res.ok) {
-        const list = await res.json();
-        if (Array.isArray(list) && list.length > 0) {
-          const lat = parseFloat(list[0].lat);
-          const lng = parseFloat(list[0].lon);
-          flyToCoordinates(lat, lng, 17);
-          setSelectedLoc({
-            address: list[0].display_name || query,
-            area: list[0].name || query.split(",")[0].trim(),
-            city: "Bangladesh",
-            latitude: lat,
-            longitude: lng,
-            isCurrentGps: false,
-          });
-          setIsSearching(false);
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn("Search geocode error:", err);
-    }
-
-    setSelectedLoc((prev) => ({
-      ...prev,
-      address: query,
-      area: query.split(",")[0].trim(),
-    }));
-    setIsSearching(false);
-  };
-
-  // Save and continue
+  // Confirm selection and save
   const handleConfirm = async () => {
     await saveUserLocation(selectedLoc);
     onLocationSelected(selectedLoc);
@@ -645,7 +657,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   return (
     <SafeAreaView className="flex-1 bg-[#e0b328]">
       {/* Top Header */}
-      <View className="bg-[#e0b328] px-6 pt-2 pb-4">
+      <View className="bg-[#e0b328] px-6 pt-2 pb-3 z-50">
         <View className="flex-row items-center justify-between">
           {onBack ? (
             <TouchableOpacity
@@ -664,27 +676,26 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
               className="text-lg font-black text-slate-900 tracking-tight text-center"
               numberOfLines={1}
             >
-              Choose On Google Maps
+              Google Maps Location Picker
             </Text>
             <Text className="text-[11px] font-semibold text-amber-950/70">
-              Free in-app interactive map location picker
+              Tap anywhere on map or search address
             </Text>
           </View>
 
           <View className="w-10 h-10" />
         </View>
 
-        {/* Floating Search Bar directly above map */}
+        {/* Floating Live Search Bar with Instant Autocomplete (go-track style) */}
         <View className="mt-2 bg-white rounded-2xl border border-slate-200/90 shadow-md flex-row items-center px-4 py-2">
           <Search size={18} color="#94a3b8" className="mr-2" />
           <TextInput
             value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search address, road, area, or city..."
+            onChangeText={handleSearchQueryChange}
+            placeholder="Search address, landmark, road, or city..."
             placeholderTextColor="#94a3b8"
             className="flex-1 text-sm font-semibold text-slate-800 py-1"
             returnKeyType="search"
-            onSubmitEditing={handleSearchSubmit}
           />
           {isSearching && (
             <ActivityIndicator size="small" color="#e0b328" className="mr-1" />
@@ -693,6 +704,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             <TouchableOpacity
               onPress={() => {
                 setSearchQuery("");
+                setSuggestions([]);
                 setCustomAreaName(null);
               }}
               className="w-6 h-6 rounded-full bg-slate-100 items-center justify-center ml-1"
@@ -702,8 +714,32 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
           )}
         </View>
 
+        {/* Live Search Autocomplete Dropdown List (same as go-track) */}
+        {suggestions.length > 0 && (
+          <View className="bg-white rounded-2xl border border-slate-200 mt-2 shadow-2xl overflow-hidden max-h-52 z-50">
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {suggestions.map((place) => (
+                <TouchableOpacity
+                  key={place.place_id}
+                  onPress={() => handleSelectSuggestion(place)}
+                  activeOpacity={0.7}
+                  className="p-3 border-b border-slate-100 flex-row items-center active:bg-amber-50"
+                >
+                  <MapPin size={15} color="#e0b328" className="mr-2.5 shrink-0" />
+                  <Text
+                    className="text-slate-800 text-xs font-semibold flex-1"
+                    numberOfLines={2}
+                  >
+                    {place.display_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Quick Set Custom Location Name Pill */}
-        {searchQuery.trim().length > 0 && (
+        {searchQuery.trim().length > 0 && suggestions.length === 0 && (
           <TouchableOpacity
             onPress={() => handleApplyCustomName(searchQuery.trim())}
             activeOpacity={0.85}
@@ -735,7 +771,10 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
                 key={city.name}
                 onPress={() => {
                   setSearchQuery(city.name);
-                  flyToCoordinates(city.lat, city.lng, 15);
+                  setSuggestions([]);
+                  setCustomAreaName(null);
+                  movePinTo(city.lat, city.lng, 15);
+                  handleLocationCoordinates(city.lat, city.lng);
                 }}
                 activeOpacity={0.7}
                 className="bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/90 active:bg-[#e0b328]"
@@ -748,7 +787,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
           </View>
         </View>
 
-        {/* 100% Free In-App Google Maps Canvas */}
+        {/* Free In-App Google Maps Canvas with Interactive Pin */}
         <View className="flex-1 relative">
           {Platform.OS === "web" ? (
             React.createElement("iframe", {
@@ -839,22 +878,30 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
                     className="text-base font-black text-slate-900 tracking-tight flex-1"
                     numberOfLines={1}
                   >
-                    {selectedLoc.area || selectedLoc.address}
+                    {isGeocoding
+                      ? "Detecting location name..."
+                      : (selectedLoc.area || selectedLoc.address)}
                   </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditNameInput(selectedLoc.area || selectedLoc.address);
-                      setIsEditingName(true);
-                    }}
-                    activeOpacity={0.7}
-                    className="p-1.5 rounded-lg bg-amber-50 border border-amber-200 ml-2"
-                  >
-                    <Edit3 size={13} color="#b45309" />
-                  </TouchableOpacity>
+                  {isGeocoding ? (
+                    <ActivityIndicator size="small" color="#e0b328" className="ml-2" />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditNameInput(selectedLoc.area || selectedLoc.address);
+                        setIsEditingName(true);
+                      }}
+                      activeOpacity={0.7}
+                      className="p-1.5 rounded-lg bg-amber-50 border border-amber-200 ml-2"
+                    >
+                      <Edit3 size={13} color="#b45309" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
               <Text className="text-xs font-semibold text-slate-500 mt-0.5" numberOfLines={1}>
-                {selectedLoc.address || `${selectedLoc.area}, ${selectedLoc.city}`}
+                {isGeocoding
+                  ? "Locating on Google Maps..."
+                  : (selectedLoc.address || `${selectedLoc.area}, ${selectedLoc.city}`)}
               </Text>
             </View>
 
