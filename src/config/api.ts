@@ -142,6 +142,8 @@ const FALLBACK_SERVICES: Service[] = [
     rating: 4.9,
     reviewCount: 200,
     experience: "10-year Experience",
+    latitude: 23.7461,
+    longitude: 90.3742,
   },
   {
     id: 2,
@@ -161,6 +163,8 @@ const FALLBACK_SERVICES: Service[] = [
     rating: 4.8,
     reviewCount: 145,
     experience: "8-year Experience",
+    latitude: 23.8071,
+    longitude: 90.3686,
   },
   {
     id: 3,
@@ -178,6 +182,8 @@ const FALLBACK_SERVICES: Service[] = [
     rating: 4.9,
     reviewCount: 180,
     experience: "12-year Experience",
+    latitude: 23.7925,
+    longitude: 90.4078,
   },
 ];
 

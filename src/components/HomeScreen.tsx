@@ -262,9 +262,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               className="flex-row items-center space-x-1"
             >
               <Text className="text-xs text-slate-400 dark:text-slate-400 font-bold uppercase tracking-wider">
-                My Location
+                My Location Area
               </Text>
-              <Text className="text-primary text-xs font-bold ml-1">▾</Text>
+              {/* <Text className="text-primary text-xs font-bold ml-1">▾</Text> */}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onChangeLocation}

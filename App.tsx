@@ -1,7 +1,27 @@
-import "./global.css";
-import React, { useState, useEffect } from "react";
-import { View, ActivityIndicator, StatusBar as RNStatusBar, Platform } from "react-native";
+// Configure Reanimated logger and LogBox before any module evaluates shared values
+if (typeof globalThis !== "undefined") {
+  (globalThis as any).__reanimatedLoggerConfig = {
+    level: 1,
+    strict: false,
+  };
+}
+
+import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
+import { LogBox, View, ActivityIndicator, StatusBar as RNStatusBar, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import React, { useState, useEffect } from "react";
+
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
+
+LogBox.ignoreLogs([
+  "[Reanimated] Reading from `value` during component render",
+  "Reading from `value` during component render",
+]);
+
+import "./global.css";
 import { SplashScreen } from "./src/components/SplashScreen";
 import { LocationPickerScreen } from "./src/components/LocationPickerScreen";
 import { HomeScreen } from "./src/components/HomeScreen";
@@ -146,6 +166,7 @@ function AppContent() {
       ) : selectedService ? (
         <ServiceDetailScreen
           service={selectedService}
+          userLocation={userLocation}
           onBack={() => setSelectedService(null)}
         />
       ) : selectedSubcategory && selectedCategory ? (
