@@ -75,7 +75,7 @@ export const API_BASE_URL = getCandidateBaseUrls()[0];
  * Resilient multi-network fetch that automatically discovers and connects to
  * the backend on ANY Wi-Fi, hotspot, or local network.
  */
-async function smartFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+export async function smartFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const candidateUrls = getCandidateBaseUrls();
 
   // If a known working URL is cached, try it first

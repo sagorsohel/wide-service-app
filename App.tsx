@@ -19,9 +19,11 @@ configureReanimatedLogger({
 LogBox.ignoreLogs([
   "[Reanimated] Reading from `value` during component render",
   "Reading from `value` during component render",
+  "expo-notifications: Android Push notifications",
 ]);
 
 import "./global.css";
+import { isRunningInExpoGo } from "expo";
 import { SplashScreen } from "./src/components/SplashScreen";
 import { LocationPickerScreen } from "./src/components/LocationPickerScreen";
 import { HomeScreen } from "./src/components/HomeScreen";
@@ -81,8 +83,20 @@ function AppContent() {
 
     initApp();
 
+    // Register push notification token (only in builds supporting push)
+    let cleanupListeners = () => {};
+    if (!isRunningInExpoGo() || Platform.OS !== "android") {
+      import("./src/services/notificationService")
+        .then((mod) => {
+          mod.registerForPushNotificationsAsync().catch(() => {});
+          cleanupListeners = mod.setupNotificationListeners();
+        })
+        .catch(() => {});
+    }
+
     return () => {
       isMounted = false;
+      cleanupListeners();
     };
   }, []);
 
