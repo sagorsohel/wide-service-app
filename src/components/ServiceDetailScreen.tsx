@@ -421,7 +421,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           className="flex-1"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 175 }}
         >
           {/* 1. Provider Profile Card (Profile Image, Business Name, Rating & Distance) */}
           <View className="px-5 pt-5 mb-4">
@@ -837,8 +837,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
 
         {/* Floating Bottom Booking / Call Bar */}
         <View
-          style={{ zIndex: 40, elevation: 12 }}
-          className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-5 py-3.5 flex-row items-center justify-between shadow-2xl"
+          style={{ zIndex: 40, elevation: 12, bottom: 68 }}
+          className="absolute left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-5 py-3 flex-row items-center justify-between shadow-2xl"
         >
           <TouchableOpacity
             onPress={handleOpenMaps}
