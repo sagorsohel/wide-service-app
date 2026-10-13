@@ -34,7 +34,10 @@ import {
 import { WebView } from "react-native-webview";
 import { Service, UserLocation } from "../types";
 import { getUserLocation } from "../services/locationStorage";
-import { calculateHaversineDistanceKm, formatDistance } from "../utils/distance";
+import {
+  calculateHaversineDistanceKm,
+  formatDistance,
+} from "../utils/distance";
 
 interface ServiceDetailScreenProps {
   service: Service;
@@ -50,10 +53,13 @@ function getServiceMapHtml(
   serviceLng: number,
   serviceName: string,
   userLat?: number | null,
-  userLng?: number | null
+  userLng?: number | null,
 ): string {
   const hasUser = userLat != null && userLng != null;
-  const cleanServiceName = (serviceName || "Service Location").replace(/'/g, "\\'");
+  const cleanServiceName = (serviceName || "Service Location").replace(
+    /'/g,
+    "\\'",
+  );
 
   return `<!DOCTYPE html>
 <html>
@@ -148,7 +154,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   onBack,
 }) => {
   const [currentUserLoc, setCurrentUserLoc] = useState<UserLocation | null>(
-    propUserLocation || null
+    propUserLocation || null,
   );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
@@ -164,24 +170,31 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
 
   // Profile Image URL
   const profileImageUri =
-    service.logo ||
-    "https://img.icons8.com/fluency/96/maintenance.png";
+    service.logo || "https://img.icons8.com/fluency/96/maintenance.png";
 
   // Parse Services Images (Showcase Multiple Images)
   const parsedImages: string[] = useMemo(() => {
     if (!service.images) return [];
     if (Array.isArray(service.images)) {
-      return service.images.filter((img): img is string => typeof img === "string" && Boolean(img.trim()));
+      return service.images.filter(
+        (img): img is string => typeof img === "string" && Boolean(img.trim()),
+      );
     }
     if (typeof service.images === "string") {
       try {
         const parsed = JSON.parse(service.images);
         if (Array.isArray(parsed)) {
-          return parsed.filter((img): img is string => typeof img === "string" && Boolean(img.trim()));
+          return parsed.filter(
+            (img): img is string =>
+              typeof img === "string" && Boolean(img.trim()),
+          );
         }
       } catch {
         return service.images.includes(",")
-          ? service.images.split(",").map((s) => s.trim()).filter(Boolean)
+          ? service.images
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
           : [service.images.trim()];
       }
     }
@@ -203,7 +216,9 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       list.push(service.logo.trim());
     }
     if (list.length > 0) return list;
-    return ["https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800"];
+    return [
+      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800",
+    ];
   }, [parsedImages, service.logo]);
 
   // Image Navigation Handlers
@@ -214,7 +229,9 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
 
   const handlePrevImage = () => {
     if (galleryImages.length <= 1) return;
-    setActiveImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
+    setActiveImageIndex(
+      (prev) => (prev - 1 + galleryImages.length) % galleryImages.length,
+    );
   };
 
   // Calculate live distance
@@ -233,7 +250,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         currentUserLoc.latitude,
         currentUserLoc.longitude,
         sLat,
-        sLng
+        sLng,
       );
     }
     if (service.distanceKm != null) {
@@ -260,7 +277,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   // Phone Call Action
   const handleCall = async () => {
     if (!service.phone) {
-      Alert.alert("Contact Info", "No phone number available for this service.");
+      Alert.alert(
+        "Contact Info",
+        "No phone number available for this service.",
+      );
       return;
     }
     const cleanNumber = service.phone.replace(/[^0-9+]/g, "");
@@ -271,7 +291,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       console.warn("Could not launch phone dialer:", err);
       Alert.alert(
         "Phone Call",
-        `Service Number: ${service.phone}\n\nCould not open dialer app on this device.`
+        `Service Number: ${service.phone}\n\nCould not open dialer app on this device.`,
       );
     }
   };
@@ -279,12 +299,15 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   // WhatsApp Action
   const handleWhatsApp = async () => {
     if (!service.whatsapp) {
-      Alert.alert("WhatsApp Info", "No WhatsApp number provided for this service.");
+      Alert.alert(
+        "WhatsApp Info",
+        "No WhatsApp number provided for this service.",
+      );
       return;
     }
     const cleanWa = service.whatsapp.replace(/[^0-9]/g, "");
     const msg = encodeURIComponent(
-      `হ্যালো, আমি Wide Service অ্যাপ থেকে "${service.name}" সম্পর্কে জানতে যোগাযোগ করছি।`
+      `হ্যালো, আমি Wide Service অ্যাপ থেকে "${service.name}" সম্পর্কে জানতে যোগাযোগ করছি।`,
     );
     const waUrl = `https://wa.me/${cleanWa}?text=${msg}`;
     try {
@@ -293,7 +316,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       console.warn("Could not open WhatsApp:", err);
       Alert.alert(
         "WhatsApp",
-        `WhatsApp Number: ${service.whatsapp}\n\nWhatsApp is not installed or could not be opened.`
+        `WhatsApp Number: ${service.whatsapp}\n\nWhatsApp is not installed or could not be opened.`,
       );
     }
   };
@@ -325,15 +348,22 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     try {
       await Linking.openURL(googleMapsUrl);
     } catch (err) {
-      console.warn("Could not open Google Maps directly, trying fallback:", err);
+      console.warn(
+        "Could not open Google Maps directly, trying fallback:",
+        err,
+      );
       try {
-        const query = encodeURIComponent(`${service.name} ${service.address || ""}`);
-        await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+        const query = encodeURIComponent(
+          `${service.name} ${service.address || ""}`,
+        );
+        await Linking.openURL(
+          `https://www.google.com/maps/search/?api=1&query=${query}`,
+        );
       } catch (fallbackErr) {
         console.error("Failed to open fallback maps:", fallbackErr);
         Alert.alert(
           "Service Location",
-          `Address: ${service.address || service.name}\nCoordinates: ${serviceLat}, ${serviceLng}`
+          `Address: ${service.address || service.name}\nCoordinates: ${serviceLat}, ${serviceLng}`,
         );
       }
     }
@@ -347,7 +377,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#e0b328]" style={{ backgroundColor: "#e0b328" }}>
+    <SafeAreaView
+      className="flex-1 bg-[#e0b328]"
+      style={{ backgroundColor: "#e0b328" }}
+    >
       <StatusBar style="dark" animated={true} />
 
       {/* Top Header matching Brand Theme */}
@@ -431,7 +464,11 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                   {calculatedDistanceKm != null && (
                     <View className="flex-row items-center flex-wrap gap-1.5 mt-2">
                       <View className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-full flex-row items-center">
-                        <Navigation size={10} color="#059669" className="mr-1" />
+                        <Navigation
+                          size={10}
+                          color="#059669"
+                          className="mr-1"
+                        />
                         <Text className="text-[10px] font-black text-emerald-700 dark:text-emerald-300">
                           {formatDistance(calculatedDistanceKm)}
                         </Text>
@@ -469,6 +506,165 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           </View>
 
           {/* 3. Services Images Gallery (Showcase Photos) */}
+
+          {/* 4. Service Operating Schedule Section */}
+          <View className="px-5 mb-5">
+            <View className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <View className="flex-row items-center justify-between mb-2.5">
+                <View className="flex-row items-center gap-2">
+                  <View className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 items-center justify-center">
+                    <Clock size={16} color="#2563eb" />
+                  </View>
+                  <Text className="text-sm font-black text-slate-900 dark:text-slate-100">
+                    Service Operating Schedule
+                  </Text>
+                </View>
+              </View>
+
+              <View className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <Text className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-snug">
+                  {service.schedule ||
+                    "Everyday: 9:00 AM - 9:00 PM (Emergency 24/7 Support)"}
+                </Text>
+                <Text className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  Operating hours may vary during holidays or emergency calls.
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View className="px-5 mb-5">
+            <View className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <Text className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight mb-2">
+                About Service
+              </Text>
+              <Text className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                {service.description ||
+                  `অভিজ্ঞ ও প্রশিক্ষিত কারিগর দ্বারা দ্রুত এবং নির্ভরযোগ্য সার্ভিস। আধুনিক সরঞ্জাম দিয়ে দ্রুত সমাধান ও কাজের পর ৭ দিনের ফ্রি সার্ভিস ওয়ারেন্টি।`}
+              </Text>
+            </View>
+          </View>
+
+          {/* 5. Distance & Interactive Maps Section */}
+          <View className="px-5 mb-5">
+            <View className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center gap-2">
+                  <View className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 items-center justify-center">
+                    <MapPin size={16} color="#d97706" />
+                  </View>
+                  <View>
+                    <Text className="text-sm font-black text-slate-900 dark:text-slate-100">
+                      Service Location & Map
+                    </Text>
+                    {calculatedDistanceKm != null && (
+                      <Text className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                        {formatDistance(calculatedDistanceKm)} from your current
+                        location
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                {calculatedDistanceKm != null && (
+                  <View className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-full">
+                    <Text className="text-xs font-black text-emerald-700 dark:text-emerald-300">
+                      {calculatedDistanceKm.toFixed(1)} km
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Physical Address Text */}
+              <Text className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed mb-3">
+                {service.address}
+              </Text>
+
+              {/* Embedded Interactive Map Preview (WebView - Tap opens Google Maps) */}
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={handleOpenMaps}
+                className="w-full h-48 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 mb-3 relative"
+              >
+                <View
+                  pointerEvents="none"
+                  style={{ width: "100%", height: "100%" }}
+                >
+                  <WebView
+                    originWhitelist={["*"]}
+                    source={{
+                      html: getServiceMapHtml(
+                        serviceLat,
+                        serviceLng,
+                        service.name,
+                        currentUserLoc?.latitude,
+                        currentUserLoc?.longitude,
+                      ),
+                    }}
+                    scrollEnabled={false}
+                    style={{ width: "100%", height: "100%" }}
+                    onError={(err) => console.warn("Map load error:", err)}
+                  />
+                </View>
+
+                {/* Floating Directions Button on Map */}
+                <View
+                  pointerEvents="none"
+                  style={{ zIndex: 10, elevation: 4 }}
+                  className="absolute bottom-2.5 right-2.5 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl flex-row items-center shadow-md"
+                >
+                  <Compass size={13} color="#ffffff" className="mr-1.5" />
+                  <Text className="text-xs font-bold text-white">Full Map</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Get Directions Button */}
+              <TouchableOpacity
+                onPress={handleOpenMaps}
+                activeOpacity={0.85}
+                className="w-full bg-blue-600 py-3 px-4 rounded-2xl flex-row items-center justify-center shadow-sm shadow-blue-600/20 active:bg-blue-700"
+              >
+                <Navigation size={16} color="#ffffff" className="mr-2" />
+                <Text className="text-white font-black text-sm ml-1.5">
+                  Get Directions in Google Maps
+                </Text>
+                <ExternalLink size={14} color="#93c5fd" className="ml-2" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 6. Direct Contact Hotline Row */}
+          <View className="px-5 mb-5">
+            <View className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 items-center justify-center">
+                    <Phone size={18} color="#059669" />
+                  </View>
+                  <View>
+                    <Text className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                      Direct Contact Hotline
+                    </Text>
+                    <Text className="text-sm font-black text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">
+                      {service.phone}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleCall}
+                  className="bg-emerald-500 px-3.5 py-2 rounded-xl flex-row items-center"
+                >
+                  <PhoneCall size={13} color="#ffffff" className="mr-1.5" />
+                  <Text className="text-white text-xs font-extrabold ml-1">
+                    Call
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* 7. About Service / Description Section */}
+
           <View className="px-5 mb-5">
             <View className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
               <View className="flex-row items-center justify-between mb-3">
@@ -554,7 +750,9 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                   className="absolute top-2.5 right-2.5 bg-slate-900/80 backdrop-blur-md px-2.5 py-1.5 rounded-xl flex-row items-center gap-1 border border-white/10"
                 >
                   <Maximize2 size={12} color="#ffffff" />
-                  <Text className="text-[11px] font-bold text-white">Full View</Text>
+                  <Text className="text-[11px] font-bold text-white">
+                    Full View
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -592,159 +790,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
             </View>
           </View>
 
-          {/* 4. Service Operating Schedule Section */}
-          <View className="px-5 mb-5">
-            <View className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <View className="flex-row items-center justify-between mb-2.5">
-                <View className="flex-row items-center gap-2">
-                  <View className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 items-center justify-center">
-                    <Clock size={16} color="#2563eb" />
-                  </View>
-                  <Text className="text-sm font-black text-slate-900 dark:text-slate-100">
-                    Service Operating Schedule
-                  </Text>
-                </View>
-
-               
-              </View>
-
-              <View className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <Text className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-snug">
-                  {service.schedule || "Everyday: 9:00 AM - 9:00 PM (Emergency 24/7 Support)"}
-                </Text>
-                <Text className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                  Operating hours may vary during holidays or emergency calls.
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* 5. Distance & Interactive Maps Section */}
-          <View className="px-5 mb-5">
-            <View className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center gap-2">
-                  <View className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 items-center justify-center">
-                    <MapPin size={16} color="#d97706" />
-                  </View>
-                  <View>
-                    <Text className="text-sm font-black text-slate-900 dark:text-slate-100">
-                      Service Location & Map
-                    </Text>
-                    {calculatedDistanceKm != null && (
-                      <Text className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                        {formatDistance(calculatedDistanceKm)} from your current location
-                      </Text>
-                    )}
-                  </View>
-                </View>
-
-                {calculatedDistanceKm != null && (
-                  <View className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-full">
-                    <Text className="text-xs font-black text-emerald-700 dark:text-emerald-300">
-                      {calculatedDistanceKm.toFixed(1)} km
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Physical Address Text */}
-              <Text className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed mb-3">
-                {service.address}
-              </Text>
-
-              {/* Embedded Interactive Map Preview (WebView - Tap opens Google Maps) */}
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={handleOpenMaps}
-                className="w-full h-48 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 mb-3 relative"
-              >
-                <View pointerEvents="none" style={{ width: "100%", height: "100%" }}>
-                  <WebView
-                    originWhitelist={["*"]}
-                    source={{
-                      html: getServiceMapHtml(
-                        serviceLat,
-                        serviceLng,
-                        service.name,
-                        currentUserLoc?.latitude,
-                        currentUserLoc?.longitude
-                      ),
-                    }}
-                    scrollEnabled={false}
-                    style={{ width: "100%", height: "100%" }}
-                    onError={(err) => console.warn("Map load error:", err)}
-                  />
-                </View>
-
-                {/* Floating Directions Button on Map */}
-                <View
-                  pointerEvents="none"
-                  style={{ zIndex: 10, elevation: 4 }}
-                  className="absolute bottom-2.5 right-2.5 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl flex-row items-center shadow-md"
-                >
-                  <Compass size={13} color="#ffffff" className="mr-1.5" />
-                  <Text className="text-xs font-bold text-white">Full Map</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Get Directions Button */}
-              <TouchableOpacity
-                onPress={handleOpenMaps}
-                activeOpacity={0.85}
-                className="w-full bg-blue-600 py-3 px-4 rounded-2xl flex-row items-center justify-center shadow-sm shadow-blue-600/20 active:bg-blue-700"
-              >
-                <Navigation size={16} color="#ffffff" className="mr-2" />
-                <Text className="text-white font-black text-sm ml-1.5">
-                  Get Directions in Google Maps
-                </Text>
-                <ExternalLink size={14} color="#93c5fd" className="ml-2" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* 6. Direct Contact Hotline Row */}
-          <View className="px-5 mb-5">
-            <View className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-3">
-                  <View className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 items-center justify-center">
-                    <Phone size={18} color="#059669" />
-                  </View>
-                  <View>
-                    <Text className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                      Direct Contact Hotline
-                    </Text>
-                    <Text className="text-sm font-black text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">
-                      {service.phone}
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleCall}
-                  className="bg-emerald-500 px-3.5 py-2 rounded-xl flex-row items-center"
-                >
-                  <PhoneCall size={13} color="#ffffff" className="mr-1.5" />
-                  <Text className="text-white text-xs font-extrabold ml-1">Call</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {/* 7. About Service / Description Section */}
-          <View className="px-5 mb-5">
-            <View className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <Text className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight mb-2">
-                About Service
-              </Text>
-              <Text className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-                {service.description ||
-                  `অভিজ্ঞ ও প্রশিক্ষিত কারিগর দ্বারা দ্রুত এবং নির্ভরযোগ্য সার্ভিস। আধুনিক সরঞ্জাম দিয়ে দ্রুত সমাধান ও কাজের পর ৭ দিনের ফ্রি সার্ভিস ওয়ারেন্টি।`}
-              </Text>
-            </View>
-          </View>
-
           {/* 8. Customer Reviews Section */}
           <View className="px-5 mb-5">
             <View className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
@@ -767,7 +812,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                   </Text>
                 </View>
                 <Text className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                  "খুবই ভালো সার্ভিস। সময়মতো এসে নিঁখুতভাবে কাজটি করে দিয়েছেন। কাজের মান চমৎকার!"
+                  "খুবই ভালো সার্ভিস। সময়মতো এসে নিঁখুতভাবে কাজটি করে দিয়েছেন।
+                  কাজের মান চমৎকার!"
                 </Text>
               </View>
 
@@ -781,7 +827,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                   </Text>
                 </View>
                 <Text className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                  "Friendly behavior and reasonable charges. Highly recommended!"
+                  "Friendly behavior and reasonable charges. Highly
+                  recommended!"
                 </Text>
               </View>
             </View>
@@ -831,66 +878,68 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
               <X size={24} color="#ffffff" />
             </TouchableOpacity>
 
-          {/* Counter at top */}
-          {galleryImages.length > 1 && (
-            <View className="absolute top-14 bg-white/20 px-3 py-1 rounded-full">
-              <Text className="text-white text-xs font-bold">
-                {activeImageIndex + 1} / {galleryImages.length}
-              </Text>
-            </View>
-          )}
+            {/* Counter at top */}
+            {galleryImages.length > 1 && (
+              <View className="absolute top-14 bg-white/20 px-3 py-1 rounded-full">
+                <Text className="text-white text-xs font-bold">
+                  {activeImageIndex + 1} / {galleryImages.length}
+                </Text>
+              </View>
+            )}
 
-          {/* Fullscreen Image (tap advances) */}
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={handleNextImage}
-            className="w-full h-4/5 justify-center items-center"
-          >
-            <Image
-              source={{ uri: galleryImages[activeImageIndex] }}
-              className="w-full h-full"
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-
-          {/* Left Arrow in Modal */}
-          {galleryImages.length > 1 && (
+            {/* Fullscreen Image (tap advances) */}
             <TouchableOpacity
-              onPress={handlePrevImage}
-              activeOpacity={0.7}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              className="absolute left-4 top-1/2 -mt-6 w-12 h-12 rounded-full bg-white/20 items-center justify-center z-10"
-            >
-              <ChevronLeft size={28} color="#ffffff" />
-            </TouchableOpacity>
-          )}
-
-          {/* Right Arrow in Modal */}
-          {galleryImages.length > 1 && (
-            <TouchableOpacity
+              activeOpacity={1}
               onPress={handleNextImage}
-              activeOpacity={0.7}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              className="absolute right-4 top-1/2 -mt-6 w-12 h-12 rounded-full bg-white/20 items-center justify-center z-10"
+              className="w-full h-4/5 justify-center items-center"
             >
-              <ChevronRight size={28} color="#ffffff" />
+              <Image
+                source={{ uri: galleryImages[activeImageIndex] }}
+                className="w-full h-full"
+                resizeMode="contain"
+              />
             </TouchableOpacity>
-          )}
 
-          {/* Navigation Controls in Modal */}
-          {galleryImages.length > 1 && (
-            <View className="flex-row items-center justify-center gap-3 mt-4">
-              {galleryImages.map((_, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => setActiveImageIndex(idx)}
-                  className={`w-3 h-3 rounded-full ${
-                    idx === activeImageIndex ? "bg-amber-400 scale-125" : "bg-white/40"
-                  }`}
-                />
-              ))}
-            </View>
-          )}
+            {/* Left Arrow in Modal */}
+            {galleryImages.length > 1 && (
+              <TouchableOpacity
+                onPress={handlePrevImage}
+                activeOpacity={0.7}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                className="absolute left-4 top-1/2 -mt-6 w-12 h-12 rounded-full bg-white/20 items-center justify-center z-10"
+              >
+                <ChevronLeft size={28} color="#ffffff" />
+              </TouchableOpacity>
+            )}
+
+            {/* Right Arrow in Modal */}
+            {galleryImages.length > 1 && (
+              <TouchableOpacity
+                onPress={handleNextImage}
+                activeOpacity={0.7}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                className="absolute right-4 top-1/2 -mt-6 w-12 h-12 rounded-full bg-white/20 items-center justify-center z-10"
+              >
+                <ChevronRight size={28} color="#ffffff" />
+              </TouchableOpacity>
+            )}
+
+            {/* Navigation Controls in Modal */}
+            {galleryImages.length > 1 && (
+              <View className="flex-row items-center justify-center gap-3 mt-4">
+                {galleryImages.map((_, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => setActiveImageIndex(idx)}
+                    className={`w-3 h-3 rounded-full ${
+                      idx === activeImageIndex
+                        ? "bg-amber-400 scale-125"
+                        : "bg-white/40"
+                    }`}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         </Modal>
       )}
