@@ -365,53 +365,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
 
         {/* Nearby Services Section - Location Based (Closest First) or Skeletons while loading */}
-        {loading && services.length === 0 ? (
-          <View className="px-6 mb-28">
-            <View className="flex-row items-center justify-between mb-3">
-              <Animated.View
-                style={{ opacity: shimmerAnim }}
-                className="w-40 h-4 rounded bg-slate-200/80 dark:bg-slate-800"
-              />
-              <Animated.View
-                style={{ opacity: shimmerAnim }}
-                className="w-20 h-4 rounded-full bg-slate-200/70 dark:bg-slate-800"
-              />
-            </View>
-            {[1, 2, 3].map((i) => (
-              <ServiceSkeletonCard key={i} animStyle={{ opacity: shimmerAnim }} />
-            ))}
-          </View>
-        ) : filteredServices.length > 0 ? (
-          <View className="px-6 mb-28">
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center flex-1 mr-2">
-                <Navigation size={15} color="#d97706" />
-                <Text
-                  className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight ml-1.5"
-                  numberOfLines={1}
-                >
-                  {userLocation?.area
-                    ? `Nearby Services in ${userLocation.area}`
-                    : "Nearby Services Around You"}
-                </Text>
-              </View>
-              <View className="bg-amber-100/90 dark:bg-amber-950/70 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
-                <Text className="text-[10px] font-extrabold text-amber-900 dark:text-amber-300">
-                  ⚡ Closest First
-                </Text>
-              </View>
-            </View>
-
-            {/* List top closest services */}
-            {filteredServices.slice(0, 15).map((srv) => (
-              <ServiceCard
-                key={srv.id}
-                service={srv}
-                onPress={() => onSelectService(srv)}
-              />
-            ))}
-          </View>
-        ) : null}
+       
       </ScrollView>
       )}
 
