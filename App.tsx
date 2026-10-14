@@ -10,7 +10,8 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-rean
 import { LogBox, View, ActivityIndicator, StatusBar as RNStatusBar, Platform, TouchableOpacity, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import React, { useState, useEffect } from "react";
-import { Home, Settings } from "lucide-react-native";
+import { Home, Settings, Search } from "lucide-react-native";
+import { FindScreen } from "./src/components/FindScreen";
 
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
@@ -46,7 +47,7 @@ function AppContent() {
   const insets = useSafeAreaInsets();
   const [isInitializing, setIsInitializing] = useState(true);
   const [currentScreen, setCurrentScreen] = useState<"splash" | "location" | "home">("splash");
-  const [activeTab, setActiveTab] = useState<"home" | "setting">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "find" | "setting">("home");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
@@ -120,30 +121,12 @@ function AppContent() {
     }
   };
 
-  // Determine whether current screen has a golden #e0b328 header
-  const isYellowHeaderScreen =
-    currentScreen === "location" ||
-    !!selectedService ||
-    (!!selectedSubcategory && !!selectedCategory) ||
-    !!selectedCategory;
+  // Status bar styling (Clean Light Theme, no yellow leakage)
+  const statusBarStyle: "light" | "dark" =
+    currentScreen === "splash" ? "dark" : isDark ? "light" : "dark";
 
-  // On #e0b328 (yellow), status bar icons must always be dark.
-  // In HomeScreen / SettingsScreen, dark mode has light icons with dark background (#020617).
-  const statusBarStyle: "light" | "dark" = isYellowHeaderScreen
-    ? "dark"
-    : currentScreen === "splash"
-    ? "dark"
-    : isDark
-    ? "light"
-    : "dark";
-
-  const statusBarBg = isYellowHeaderScreen
-    ? "#e0b328"
-    : currentScreen === "splash"
-    ? "#ffffff"
-    : isDark
-    ? "#020617"
-    : "#f8fafc";
+  const statusBarBg =
+    currentScreen === "splash" ? "#ffffff" : isDark ? "#020617" : "#f8fafc";
 
   // Synchronize native Android StatusBar
   useEffect(() => {
@@ -171,6 +154,16 @@ function AppContent() {
     setSelectedSubcategory(null);
     setSelectedCategory(null);
     setActiveTab("home");
+    if (currentScreen === "location") {
+      setCurrentScreen("home");
+    }
+  };
+
+  const handleGoFind = () => {
+    setSelectedService(null);
+    setSelectedSubcategory(null);
+    setSelectedCategory(null);
+    setActiveTab("find");
     if (currentScreen === "location") {
       setCurrentScreen("home");
     }
@@ -205,6 +198,14 @@ function AppContent() {
         <SettingsScreen
           userLocation={userLocation}
           onChangeLocation={() => setCurrentScreen("location")}
+        />
+      ) : activeTab === "find" && !selectedService && !selectedSubcategory && !selectedCategory ? (
+        <FindScreen
+          userLocation={userLocation}
+          onChangeLocation={() => setCurrentScreen("location")}
+          onSelectService={(srv) => {
+            setSelectedService(srv);
+          }}
         />
       ) : selectedService ? (
         <ServiceDetailScreen
@@ -253,109 +254,100 @@ function AppContent() {
         />
       )}
 
-      {/* Persistent Full-Width Bottom Navigation Bar on ALL Screens */}
+      {/* Persistent Floating Pill Bottom Navigation Bar (Matching Screenshot) */}
       {currentScreen !== "splash" && (
         <View
-          className="absolute bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800"
+          pointerEvents="box-none"
+          className="absolute bottom-0 left-0 right-0 items-center z-50"
           style={{
             paddingBottom: Math.max(insets.bottom, 12),
-            elevation: 20,
-            shadowColor: "#0f172a",
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 14,
           }}
         >
-          <View className="flex-row items-center justify-between px-5 pt-2.5">
+          <View
+            className="w-[88%] max-w-[340px] bg-white border border-slate-200/90 rounded-[32px] px-6 py-2 flex-row items-center justify-between"
+            style={{
+              elevation: 20,
+              shadowColor: "#0f172a",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 18,
+            }}
+          >
             {/* Home Tab */}
             <TouchableOpacity
               onPress={handleGoHome}
-              activeOpacity={0.7}
-              className={`flex-1 flex-row items-center justify-center py-2.5 px-4 mx-1.5 rounded-2xl ${
-                activeTab === "home" && !selectedCategory && !selectedService
-                  ? "bg-[#e0b328]/15 border border-[#e0b328]/60 shadow-2xs"
-                  : "bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/80"
-              }`}
+              activeOpacity={0.75}
+              className="w-12 h-12 items-center justify-center"
             >
               <View
-                className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${
+                className={`w-11 h-11 rounded-full items-center justify-center ${
                   activeTab === "home" && !selectedCategory && !selectedService
-                    ? "bg-[#e0b328] shadow-xs"
-                    : "bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700"
+                    ? "bg-[#e0b328] shadow-md shadow-amber-500/40"
+                    : "bg-transparent"
                 }`}
               >
                 <Home
-                  size={17}
+                  size={20}
                   color={
                     activeTab === "home" && !selectedCategory && !selectedService
                       ? "#0f172a"
-                      : isDark
-                      ? "#94a3b8"
-                      : "#64748b"
+                      : "#94a3b8"
                   }
                   strokeWidth={
                     activeTab === "home" && !selectedCategory && !selectedService ? 2.6 : 2
                   }
                 />
               </View>
-              <View>
-                <Text
-                  className={`text-xs tracking-tight ${
-                    activeTab === "home" && !selectedCategory && !selectedService
-                      ? "font-black text-slate-900 dark:text-slate-100"
-                      : "font-bold text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  Home
-                </Text>
-                {activeTab === "home" && !selectedCategory && !selectedService && (
-                  <View className="w-3.5 h-0.5 rounded-full bg-[#e0b328] mt-0.5" />
-                )}
+            </TouchableOpacity>
+
+            {/* Find Tab (Center Elevated Button) */}
+            <TouchableOpacity
+              onPress={handleGoFind}
+              activeOpacity={0.82}
+              className="items-center justify-center -mt-6"
+            >
+              <View
+                className={`w-14 h-14 rounded-full items-center justify-center border-4 border-white ${
+                  activeTab === "find" && !selectedCategory && !selectedService
+                    ? "bg-[#e0b328] shadow-xl shadow-amber-500/50"
+                    : "bg-slate-100 border-white shadow-md"
+                }`}
+                style={{
+                  elevation: 12,
+                }}
+              >
+                <Search
+                  size={22}
+                  color={
+                    activeTab === "find" && !selectedCategory && !selectedService
+                      ? "#0f172a"
+                      : "#64748b"
+                  }
+                  strokeWidth={
+                    activeTab === "find" && !selectedCategory && !selectedService ? 2.8 : 2.2
+                  }
+                />
               </View>
             </TouchableOpacity>
 
             {/* Settings Tab */}
             <TouchableOpacity
               onPress={handleGoSettings}
-              activeOpacity={0.7}
-              className={`flex-1 flex-row items-center justify-center py-2.5 px-4 mx-1.5 rounded-2xl ${
-                activeTab === "setting"
-                  ? "bg-[#e0b328]/15 border border-[#e0b328]/60 shadow-2xs"
-                  : "bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/80"
-              }`}
+              activeOpacity={0.75}
+              className="w-12 h-12 items-center justify-center"
             >
               <View
-                className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${
+                className={`w-11 h-11 rounded-full items-center justify-center ${
                   activeTab === "setting"
-                    ? "bg-[#e0b328] shadow-xs"
-                    : "bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700"
+                    ? "bg-[#e0b328] shadow-md shadow-amber-500/40"
+                    : "bg-transparent"
                 }`}
               >
                 <Settings
-                  size={17}
-                  color={
-                    activeTab === "setting"
-                      ? "#0f172a"
-                      : isDark
-                      ? "#94a3b8"
-                      : "#64748b"
-                  }
+                  size={20}
+                  color={activeTab === "setting" ? "#0f172a" : "#94a3b8"}
                   strokeWidth={activeTab === "setting" ? 2.6 : 2}
                 />
-              </View>
-              <View>
-                <Text
-                  className={`text-xs tracking-tight ${
-                    activeTab === "setting"
-                      ? "font-black text-slate-900 dark:text-slate-100"
-                      : "font-bold text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  Settings
-                </Text>
-                {activeTab === "setting" && (
-                  <View className="w-3.5 h-0.5 rounded-full bg-[#e0b328] mt-0.5" />
-                )}
               </View>
             </TouchableOpacity>
           </View>

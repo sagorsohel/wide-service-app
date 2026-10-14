@@ -259,15 +259,15 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
   useEffect(() => {
     if (Platform.OS === "android") {
       RNStatusBar.setBarStyle("dark-content", true);
-      RNStatusBar.setBackgroundColor("#e0b328", true);
+      RNStatusBar.setBackgroundColor("#ffffff", true);
     }
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#e0b328]" style={{ backgroundColor: "#e0b328" }}>
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-950">
       <StatusBar style="dark" animated={true} />
-      {/* Top Header with #e0b328 Color & Smart Animated Category Emblem + Title */}
-      <View className="bg-[#e0b328] px-6 pt-2 pb-5">
+      {/* Top Header - Fixed/Sticky with Light Background (No Yellow) */}
+      <View className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-5 py-3 shadow-2xs">
         <View className="flex-row items-center justify-between">
           {/* Back Icon Button with slide-in animation */}
           <Animated.View
@@ -279,9 +279,9 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
             <TouchableOpacity
               onPress={onBack}
               activeOpacity={0.7}
-              className="w-10 h-10 rounded-full bg-black/5 items-center justify-center -ml-2 active:opacity-60"
+              className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center -ml-1 active:opacity-60"
             >
-              <ChevronLeft size={28} color="#0f172a" />
+              <ChevronLeft size={24} color="#0f172a" strokeWidth={2.4} />
             </TouchableOpacity>
           </Animated.View>
 
@@ -296,7 +296,7 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
                   { scale: iconScale },
                 ],
               }}
-              className="w-9 h-9 rounded-2xl bg-white/75 border border-white items-center justify-center mr-2 shadow-xs overflow-hidden"
+              className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 items-center justify-center mr-2 shadow-xs overflow-hidden"
             >
               {category.image ? (
                 <Image
@@ -320,7 +320,7 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
               }}
             >
               <Text
-                className="text-lg font-black text-slate-900 tracking-tight text-center"
+                className="text-base font-black text-slate-900 dark:text-white tracking-tight text-center"
                 numberOfLines={1}
               >
                 {category.name}
@@ -333,18 +333,18 @@ export const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({
         </View>
       </View>
 
-      {/* Curvy Content Container with coordinated slide-up entrance */}
+      {/* Content Container */}
       <Animated.View
         style={{
           opacity: contentOpacity,
           transform: [{ translateY: contentTranslateY }],
         }}
-        className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-t-[36px] overflow-hidden"
+        className="flex-1 bg-slate-50 dark:bg-slate-950"
       >
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: 20, paddingBottom: 110 }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 110 }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

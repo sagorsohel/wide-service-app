@@ -372,32 +372,31 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   useEffect(() => {
     if (Platform.OS === "android") {
       RNStatusBar.setBarStyle("dark-content", true);
-      RNStatusBar.setBackgroundColor("#e0b328", true);
+      RNStatusBar.setBackgroundColor("#ffffff", true);
     }
   }, []);
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#e0b328]"
-      style={{ backgroundColor: "#e0b328" }}
+      className="flex-1 bg-slate-50 dark:bg-slate-950"
     >
       <StatusBar style="dark" animated={true} />
 
-      {/* Top Header matching Brand Theme */}
-      <View className="bg-[#e0b328] px-5 pt-2 pb-4">
+      {/* Top Header - Fixed/Sticky with Light Background (No Yellow) */}
+      <View className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-5 py-3 shadow-2xs">
         <View className="flex-row items-center justify-between">
           <TouchableOpacity
             onPress={onBack}
             activeOpacity={0.7}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+            className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center -ml-1 active:opacity-60"
           >
-            <ChevronLeft size={28} color="#0f172a" />
+            <ChevronLeft size={24} color="#0f172a" strokeWidth={2.4} />
           </TouchableOpacity>
 
           <View className="flex-1 px-2 items-center">
             <Text
-              className="text-lg font-black text-slate-900 tracking-tight text-center"
+              className="text-base font-black text-slate-900 dark:text-white tracking-tight text-center"
               numberOfLines={1}
             >
               Service Details
@@ -408,15 +407,15 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
             onPress={handleShare}
             activeOpacity={0.7}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            className="w-10 h-10 items-center justify-center -mr-2 active:opacity-60"
+            className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center -mr-1 active:opacity-60"
           >
-            <Share2 size={20} color="#0f172a" />
+            <Share2 size={18} color="#0f172a" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Main Curvy Content Sheet */}
-      <View className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-t-[30px]">
+      {/* Main Content Sheet */}
+      <View className="flex-1 bg-slate-50 dark:bg-slate-950">
         <ScrollView
           className="flex-1"
           keyboardShouldPersistTaps="handled"

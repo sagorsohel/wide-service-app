@@ -665,27 +665,26 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   useEffect(() => {
     if (Platform.OS === "android") {
       RNStatusBar.setBarStyle("dark-content", true);
-      RNStatusBar.setBackgroundColor("#e0b328", true);
+      RNStatusBar.setBackgroundColor("#ffffff", true);
     }
   }, []);
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#e0b328]"
+      className="flex-1 bg-slate-50 dark:bg-slate-950"
       edges={["top", "left", "right"]}
-      style={{ backgroundColor: "#e0b328" }}
     >
       <StatusBar style="dark" animated={true} />
       {/* Top Header */}
-      <View className="bg-[#e0b328] px-6 pt-2 pb-3 z-50">
+      <View className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-5 pt-2 pb-3 z-50">
         <View className="flex-row items-center justify-between">
           {onBack ? (
             <TouchableOpacity
               onPress={onBack}
               activeOpacity={0.7}
-              className="w-10 h-10 items-center justify-center -ml-2 active:opacity-60"
+              className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center -ml-1 active:opacity-60"
             >
-              <ChevronLeft size={28} color="#0f172a" />
+              <ChevronLeft size={24} color="#0f172a" strokeWidth={2.4} />
             </TouchableOpacity>
           ) : (
             <View className="w-10 h-10" />
@@ -693,12 +692,12 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
 
           <View className="flex-1 px-2 items-center">
             <Text
-              className="text-lg font-black text-slate-900 tracking-tight text-center"
+              className="text-base font-black text-slate-900 dark:text-white tracking-tight text-center"
               numberOfLines={1}
             >
               Google Maps Location Picker
             </Text>
-            <Text className="text-[11px] font-semibold text-amber-950/70">
+            <Text className="text-[11px] font-semibold text-slate-500">
               Tap anywhere on map or search address
             </Text>
           </View>
