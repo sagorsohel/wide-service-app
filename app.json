@@ -31,6 +31,12 @@
           "color": "#2563EB"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "apiUrl": "https://apiwideservice.widetechbd.com/api",
+      "eas": {
+        "projectId": "71ea87a6-5754-4188-be32-561c7e0978d2"
+      }
+    }
   }
 }

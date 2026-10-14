@@ -11,7 +11,7 @@ import {
   StatusBar as RNStatusBar,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronLeft,
   Search,
@@ -38,6 +38,7 @@ interface LocationPickerScreenProps {
   currentLocation?: UserLocation | null;
   onBack?: () => void;
   onLocationSelected: (location: UserLocation) => void;
+  bottomOffset?: number;
 }
 
 // Major cities for quick flyTo jumps
@@ -328,7 +329,12 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   currentLocation,
   onBack,
   onLocationSelected,
+  bottomOffset,
 }) => {
+  const insets = useSafeAreaInsets();
+  const bottomNavOffset =
+    bottomOffset !== undefined ? bottomOffset : Math.max(insets.bottom, 12) + 76;
+
   const initialLat = currentLocation?.latitude || DEFAULT_LOCATION.latitude || 23.8103;
   const initialLng = currentLocation?.longitude || DEFAULT_LOCATION.longitude || 90.4125;
 
@@ -664,7 +670,11 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#e0b328]" style={{ backgroundColor: "#e0b328" }}>
+    <SafeAreaView
+      className="flex-1 bg-[#e0b328]"
+      edges={["top", "left", "right"]}
+      style={{ backgroundColor: "#e0b328" }}
+    >
       <StatusBar style="dark" animated={true} />
       {/* Top Header */}
       <View className="bg-[#e0b328] px-6 pt-2 pb-3 z-50">
@@ -775,7 +785,12 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
           <Text className="text-[11px] font-bold text-slate-500 mr-2 shrink-0">
             Quick Jump:
           </Text>
-          <View className="flex-1 flex-row flex-wrap gap-1.5">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, paddingRight: 16 }}
+            className="flex-1"
+          >
             {QUICK_CITIES.map((city) => (
               <TouchableOpacity
                 key={city.name}
@@ -794,7 +809,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Free In-App Google Maps Canvas with Interactive Pin */}
@@ -851,17 +866,22 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
         </View>
 
         {/* Bottom Selected Location Preview & Confirmation Sheet */}
-        <View className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 pt-4 pb-6 shadow-2xl z-30">
-          <View className="flex-row items-center justify-between mb-3">
+        <View
+          className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-5 pt-3.5 shadow-2xl z-30"
+          style={{
+            paddingBottom: bottomNavOffset,
+          }}
+        >
+          <View className="flex-row items-center justify-between mb-2.5">
             <View className="flex-1 pr-3">
-              <View className="flex-row items-center mb-1">
-                <MapPin size={14} color="#e0b328" className="mr-1" />
+              <View className="flex-row items-center mb-0.5">
+                <MapPin size={13} color="#e0b328" className="mr-1" />
                 <Text className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   Selected Location (In-App Pin)
                 </Text>
               </View>
               {isEditingName ? (
-                <View className="flex-row items-center mt-1 mb-1.5">
+                <View className="flex-row items-center mt-1 mb-1">
                   <TextInput
                     value={editNameInput}
                     onChangeText={setEditNameInput}
@@ -877,7 +897,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
                       }
                       setIsEditingName(false);
                     }}
-                    className="ml-2 bg-[#e0b328] px-3 py-2 rounded-xl"
+                    className="ml-2 bg-[#e0b328] px-3 py-1.5 rounded-xl"
                   >
                     <Text className="text-xs font-black text-slate-900">Save</Text>
                   </TouchableOpacity>
@@ -885,7 +905,7 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
               ) : (
                 <View className="flex-row items-center">
                   <Text
-                    className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex-1"
+                    className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex-1"
                     numberOfLines={1}
                   >
                     {isGeocoding
@@ -915,8 +935,8 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
               </Text>
             </View>
 
-            <View className="bg-amber-100/90 dark:bg-amber-950/60 px-3 py-1.5 rounded-full border border-amber-300 dark:border-amber-700">
-              <Text className="text-xs font-black text-amber-950 dark:text-amber-200 font-mono">
+            <View className="bg-amber-100/90 dark:bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-300 dark:border-amber-700">
+              <Text className="text-[11px] font-black text-amber-950 dark:text-amber-200 font-mono">
                 {selectedLoc.latitude ? `${selectedLoc.latitude.toFixed(3)}°N` : "GPS"}
               </Text>
             </View>
@@ -926,10 +946,10 @@ export const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
           <TouchableOpacity
             onPress={handleConfirm}
             activeOpacity={0.88}
-            className="w-full bg-[#e0b328] py-4 rounded-2xl shadow-lg shadow-amber-500/30 items-center justify-center active:opacity-90 flex-row"
+            className="w-full bg-[#e0b328] py-3.5 rounded-2xl shadow-lg shadow-amber-500/30 items-center justify-center active:opacity-90 flex-row"
           >
-            <Check size={20} color="#0f172a" className="mr-2" />
-            <Text className="text-slate-900 text-base font-black tracking-wide">
+            <Check size={18} color="#0f172a" className="mr-2" />
+            <Text className="text-slate-900 text-sm sm:text-base font-black tracking-wide">
               Confirm & Set Location
             </Text>
           </TouchableOpacity>

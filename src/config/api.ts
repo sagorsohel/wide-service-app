@@ -4,21 +4,45 @@ import { Category, Subcategory, Service, UserLocation } from "../types";
 import { sortServicesByDistance } from "../utils/distance";
 
 /**
- * Collects all candidate backend base URLs across any network:
- * 1. Expo's hostUri (dynamically extracts the computer IP from Metro)
- * 2. React Native scriptURL
- * 3. Known computer Wi-Fi IPs across your routers / hotspots
- * 4. Android Emulator / Web fallbacks
+ * Production Live Backend API
+ */
+export const PRODUCTION_API_URL = "https://apiwideservice.widetechbd.com/api";
+
+/**
+ * Collects candidate backend base URLs:
+ * 1. Configured EXPO_PUBLIC_API_URL or Constants extra.apiUrl (Production default)
+ * 2. Production domain: https://apiwideservice.widetechbd.com/api
+ * 3. Dynamic Expo Metro hostUri (for local debugging)
+ * 4. Known computer Wi-Fi IPs & Android Emulator loopback
  */
 function getCandidateBaseUrls(): string[] {
   const urls: string[] = [];
 
+  // 1. Primary: Production Live Backend URL (Ensures builds connect directly)
+  const envUrl =
+    process.env.EXPO_PUBLIC_API_URL ||
+    (Constants.expoConfig as any)?.extra?.apiUrl ||
+    PRODUCTION_API_URL;
+
+  if (envUrl) {
+    const clean = envUrl.replace(/\/+$/, "");
+    if (!urls.includes(clean)) {
+      urls.push(clean);
+    }
+  }
+
+  if (!urls.includes(PRODUCTION_API_URL)) {
+    urls.push(PRODUCTION_API_URL);
+  }
+
   if (Platform.OS === "web") {
-    urls.push("http://localhost:5000/api");
+    if (!urls.includes("http://localhost:5000/api")) {
+      urls.push("http://localhost:5000/api");
+    }
     return urls;
   }
 
-  // 1. Dynamic host from Expo Constants (Primary in Expo Go)
+  // 2. Dynamic host from Expo Constants (Metro in Expo Go)
   try {
     const hostUri =
       Constants.expoConfig?.hostUri ||
@@ -27,12 +51,13 @@ function getCandidateBaseUrls(): string[] {
     if (hostUri) {
       const ip = hostUri.split(":")[0];
       if (ip && ip !== "localhost" && ip !== "127.0.0.1") {
-        urls.push(`http://${ip}:5000/api`);
+        const url = `http://${ip}:5000/api`;
+        if (!urls.includes(url)) urls.push(url);
       }
     }
   } catch (e) {}
 
-  // 2. Dynamic host from NativeModules.SourceCode.scriptURL
+  // 3. Dynamic host from NativeModules.SourceCode.scriptURL
   try {
     const scriptURL: string = NativeModules?.SourceCode?.scriptURL;
     if (scriptURL) {
@@ -47,11 +72,11 @@ function getCandidateBaseUrls(): string[] {
     }
   } catch (e) {}
 
-  // 3. Known computer LAN IPs (covers your home/office Wi-Fi networks and hotspots)
+  // 4. Known computer LAN IPs (covers home/office Wi-Fi networks and emulators)
   const knownIps = [
-    "192.168.1.72", // Current Wi-Fi IP
-    "192.168.0.106", // Alternate Wi-Fi IP
-    "10.0.2.2", // Android Emulator host loopback
+    "192.168.1.72",
+    "192.168.0.106",
+    "10.0.2.2",
     "127.0.0.1",
     "localhost",
   ];
@@ -69,11 +94,11 @@ function getCandidateBaseUrls(): string[] {
 // Memory cache for the currently verified working backend URL
 let cachedWorkingBaseUrl: string | null = null;
 
-export const API_BASE_URL = getCandidateBaseUrls()[0];
+export const API_BASE_URL = PRODUCTION_API_URL;
 
 /**
- * Resilient multi-network fetch that automatically discovers and connects to
- * the backend on ANY Wi-Fi, hotspot, or local network.
+ * Resilient multi-network fetch that connects directly to the backend
+ * (Primary: https://apiwideservice.widetechbd.com/api)
  */
 export async function smartFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const candidateUrls = getCandidateBaseUrls();
@@ -86,7 +111,9 @@ export async function smartFetch(endpoint: string, options: RequestInit = {}): P
   let lastError: any = null;
 
   for (const baseUrl of orderedUrls) {
-    const fullUrl = `${baseUrl}${endpoint}`;
+    const cleanBase = baseUrl.replace(/\/+$/, "");
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const fullUrl = `${cleanBase}${cleanEndpoint}`;
     try {
       const controller = new AbortController();
       // Fast timeout per attempt so failover takes max 3 seconds
