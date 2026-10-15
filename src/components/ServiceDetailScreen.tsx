@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   Alert,
+  TextInput,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,10 +31,17 @@ import {
   X,
   ShieldCheck,
   Compass,
+  Star,
+  Lock,
+  Send,
+  CheckCircle2,
+  LogIn,
 } from "lucide-react-native";
 import { WebView } from "react-native-webview";
-import { Service, UserLocation } from "../types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Service, UserLocation, ReviewItem } from "../types";
 import { getUserLocation } from "../services/locationStorage";
+import { useAuth } from "../context/AuthContext";
 import {
   calculateHaversineDistanceKm,
   formatDistance,
@@ -43,6 +51,7 @@ interface ServiceDetailScreenProps {
   service: Service;
   userLocation?: UserLocation | null;
   onBack: () => void;
+  onRequireLogin?: () => void;
 }
 
 /**
@@ -152,12 +161,103 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   service,
   userLocation: propUserLocation,
   onBack,
+  onRequireLogin,
 }) => {
+  const { currentUser } = useAuth();
   const [currentUserLoc, setCurrentUserLoc] = useState<UserLocation | null>(
     propUserLocation || null,
   );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
+
+  // Review states
+  const [reviewsMap, setReviewsMap] = useState<Record<string, ReviewItem[]>>({});
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState<string | null>(null);
+
+  // Restore reviews from AsyncStorage
+  useEffect(() => {
+    try {
+      AsyncStorage.getItem("@wide_service_reviews").then((val) => {
+        if (val) {
+          setReviewsMap(JSON.parse(val));
+        }
+      });
+    } catch {}
+  }, []);
+
+  const serviceReviews = useMemo(() => {
+    const srvKey = String(service.id);
+    if (reviewsMap[srvKey] && reviewsMap[srvKey].length > 0) {
+      return reviewsMap[srvKey];
+    }
+    return [
+      {
+        id: `def-1-${service.id}`,
+        serviceId: service.id,
+        userName: "Md. Tariqul Islam",
+        rating: 5,
+        comment: "খুবই ভালো সার্ভিস। সময়মতো এসে নিঁখুতভাবে কাজটি করে দিয়েছেন। কাজের মান চমৎকার!",
+        date: "2 days ago",
+        verified: true,
+      },
+      {
+        id: `def-2-${service.id}`,
+        serviceId: service.id,
+        userName: "Sadia Rahman",
+        rating: 5,
+        comment: "Friendly behavior and reasonable charges. Highly recommended!",
+        date: "1 week ago",
+        verified: true,
+      },
+    ];
+  }, [reviewsMap, service.id]);
+
+  const avgRating = useMemo(() => {
+    if (serviceReviews.length === 0) return "4.9";
+    const sum = serviceReviews.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / serviceReviews.length).toFixed(1);
+  }, [serviceReviews]);
+
+  const handleAddReview = async () => {
+    if (!currentUser) {
+      if (onRequireLogin) onRequireLogin();
+      return;
+    }
+    if (!newComment.trim()) {
+      Alert.alert("Review Required", "Please enter your review comment.");
+      return;
+    }
+
+    setReviewSubmitting(true);
+    const srvKey = String(service.id);
+    const newRev: ReviewItem = {
+      id: `rev-${Date.now()}`,
+      serviceId: service.id,
+      userName: currentUser.displayName || currentUser.name || "Customer",
+      userAvatar: currentUser.photoURL || undefined,
+      rating: newRating,
+      comment: newComment.trim(),
+      date: "Just now",
+      verified: true,
+    };
+
+    const updated = [newRev, ...serviceReviews];
+    const newMap = { ...reviewsMap, [srvKey]: updated };
+    setReviewsMap(newMap);
+
+    try {
+      await AsyncStorage.setItem("@wide_service_reviews", JSON.stringify(newMap));
+    } catch {}
+
+    setNewComment("");
+    setNewRating(5);
+    setReviewSubmitting(false);
+    setReviewSuccessMsg("আপনার রিভিউটি সফলভাবে জমা হয়েছে!");
+    setTimeout(() => setReviewSuccessMsg(null), 4000);
+  };
 
   // Load user location if not passed via props
   useEffect(() => {
@@ -789,46 +889,187 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
             </View>
           </View>
 
-          {/* 8. Customer Reviews Section */}
+          {/* 8. Customer Reviews & Ratings Section (Protected by Login) */}
           <View className="px-5 mb-5">
             <View className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                  Customer Reviews
-                </Text>
-                <Text className="text-xs font-bold text-amber-700 dark:text-amber-400">
-                  ★ 4.9 (48+ Reviews)
-                </Text>
-              </View>
-
-              <View className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 mb-2.5">
-                <View className="flex-row items-center justify-between mb-1">
-                  <Text className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Md. Tariqul Islam
-                  </Text>
-                  <Text className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                    2 days ago
+              {/* Header */}
+              <View className="flex-row items-center justify-between mb-3.5">
+                <View>
+                  <View className="flex-row items-center gap-1.5">
+                    <Star size={16} color="#f59e0b" fill="#f59e0b" />
+                    <Text className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                      Customer Reviews
+                    </Text>
+                  </View>
+                  <Text className="text-[10px] text-slate-400 mt-0.5">
+                    Verified ratings from service users
                   </Text>
                 </View>
-                <Text className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                  "খুবই ভালো সার্ভিস। সময়মতো এসে নিঁখুতভাবে কাজটি করে দিয়েছেন।
-                  কাজের মান চমৎকার!"
-                </Text>
-              </View>
-
-              <View className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <View className="flex-row items-center justify-between mb-1">
-                  <Text className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Sadia Rahman
+                <View className="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 flex-row items-center gap-1">
+                  <Text className="text-xs font-black text-amber-800 dark:text-amber-300">
+                    ★ {avgRating}
                   </Text>
-                  <Text className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                    1 week ago
+                  <Text className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                    ({serviceReviews.length})
                   </Text>
                 </View>
-                <Text className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                  "Friendly behavior and reasonable charges. Highly
-                  recommended!"
-                </Text>
+              </View>
+
+              {/* Review Submission: Conditional based on currentUser */}
+              {currentUser ? (
+                /* Authenticated User: Active Review Form */
+                <View className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700 mb-4">
+                  <View className="flex-row items-center gap-2 mb-2.5">
+                    <View className="w-7 h-7 rounded-full bg-[#e0b328] items-center justify-center">
+                      <Text className="text-xs font-black text-slate-950">
+                        {(currentUser.displayName || currentUser.name || "U")
+                          .charAt(0)
+                          .toUpperCase()}
+                      </Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-xs font-bold text-slate-900 dark:text-slate-100" numberOfLines={1}>
+                        Posting as {currentUser.displayName || currentUser.name}
+                      </Text>
+                      <View className="flex-row items-center gap-1">
+                        <CheckCircle2 size={10} color="#059669" />
+                        <Text className="text-[10px] text-emerald-600 font-semibold">
+                          Verified User
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Rating Selector */}
+                  <View className="mb-2.5">
+                    <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Tap Star Rating
+                    </Text>
+                    <View className="flex-row items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <TouchableOpacity
+                          key={star}
+                          onPress={() => setNewRating(star)}
+                          activeOpacity={0.7}
+                          className="p-1"
+                        >
+                          <Star
+                            size={22}
+                            color={newRating >= star ? "#f59e0b" : "#cbd5e1"}
+                            fill={newRating >= star ? "#f59e0b" : "transparent"}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                      <Text className="text-xs font-bold text-amber-800 dark:text-amber-300 ml-1.5">
+                        {newRating === 5 ? "⭐⭐⭐⭐⭐ Excellent" : `${newRating} Stars`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Textarea */}
+                  <TextInput
+                    value={newComment}
+                    onChangeText={setNewComment}
+                    placeholder="আপনার কাজের অভিজ্ঞতা লিখুন..."
+                    placeholderTextColor="#94a3b8"
+                    multiline
+                    numberOfLines={3}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium mb-2.5"
+                    style={{ textAlignVertical: "top", minHeight: 60 }}
+                  />
+
+                  {reviewSuccessMsg && (
+                    <View className="p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl mb-2 flex-row items-center gap-1.5">
+                      <CheckCircle2 size={14} color="#059669" />
+                      <Text className="text-xs text-emerald-800 dark:text-emerald-300 font-bold">
+                        {reviewSuccessMsg}
+                      </Text>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={handleAddReview}
+                    disabled={reviewSubmitting || !newComment.trim()}
+                    activeOpacity={0.85}
+                    className="w-full py-2.5 rounded-xl bg-[#e0b328] items-center justify-center flex-row gap-1.5 active:bg-amber-500"
+                    style={{ opacity: !newComment.trim() ? 0.5 : 1 }}
+                  >
+                    <Send size={13} color="#0f172a" />
+                    <Text className="text-slate-950 font-black text-xs">
+                      {reviewSubmitting ? "পোস্ট হচ্ছে..." : "রিভিউ পোস্ট করুন"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                /* Unauthenticated User: Lock Guard */
+                <View className="bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-2xl p-4 items-center text-center mb-4">
+                  <View className="w-9 h-9 rounded-full bg-amber-500/15 border border-amber-300 dark:border-amber-700 items-center justify-center mb-2">
+                    <Lock size={16} color="#b45309" />
+                  </View>
+                  <Text className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 text-center mb-0.5">
+                    রিভিউ দিতে লগইন করুন
+                  </Text>
+                  <Text className="text-[11px] text-slate-500 dark:text-slate-400 text-center mb-3">
+                    শুধুমাত্র ভেরিফাইড ইউজাররা টেকনিশিয়ানকে রেটিং ও রিভিউ দিতে পারবেন।
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (onRequireLogin) onRequireLogin();
+                    }}
+                    activeOpacity={0.85}
+                    className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 flex-row items-center gap-1.5"
+                  >
+                    <LogIn size={13} color="#ffffff" />
+                    <Text className="text-xs font-bold text-white dark:text-slate-900">
+                      লগইন বা সাইন আপ করুন
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Reviews List */}
+              <View className="space-y-2.5">
+                {serviceReviews.map((rev) => (
+                  <View
+                    key={rev.id}
+                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 mb-2.5"
+                  >
+                    <View className="flex-row items-center justify-between mb-1">
+                      <View className="flex-row items-center gap-1.5">
+                        <Text className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          {rev.userName}
+                        </Text>
+                        {rev.verified && (
+                          <View className="px-1.5 py-0.2 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 flex-row items-center gap-0.5">
+                            <CheckCircle2 size={9} color="#059669" />
+                            <Text className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400">
+                              Verified
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                        {rev.date}
+                      </Text>
+                    </View>
+
+                    {/* Stars */}
+                    <View className="flex-row items-center gap-0.5 mb-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          size={11}
+                          color={rev.rating >= star ? "#f59e0b" : "#cbd5e1"}
+                          fill={rev.rating >= star ? "#f59e0b" : "transparent"}
+                        />
+                      ))}
+                    </View>
+
+                    <Text className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                      {rev.comment}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
           </View>

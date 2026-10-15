@@ -10,8 +10,9 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-rean
 import { LogBox, View, ActivityIndicator, StatusBar as RNStatusBar, Platform, TouchableOpacity, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import React, { useState, useEffect } from "react";
-import { LayoutGrid, Settings, Search } from "lucide-react-native";
+import { LayoutGrid, Settings, Search, User } from "lucide-react-native";
 import { FindScreen } from "./src/components/FindScreen";
+import { ProfileScreen } from "./src/components/ProfileScreen";
 
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
@@ -41,13 +42,14 @@ import {
   setHasSeenSplash,
 } from "./src/services/locationStorage";
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
+import { AuthProvider } from "./src/context/AuthContext";
 
 function AppContent() {
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [isInitializing, setIsInitializing] = useState(true);
   const [currentScreen, setCurrentScreen] = useState<"splash" | "location" | "home">("splash");
-  const [activeTab, setActiveTab] = useState<"home" | "find" | "setting">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "find" | "setting" | "profile">("home");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
@@ -179,6 +181,16 @@ function AppContent() {
     }
   };
 
+  const handleGoProfile = () => {
+    setSelectedService(null);
+    setSelectedSubcategory(null);
+    setSelectedCategory(null);
+    setActiveTab("profile");
+    if (currentScreen === "location") {
+      setCurrentScreen("home");
+    }
+  };
+
   return (
     <View className="flex-1" style={{ backgroundColor: statusBarBg }}>
       <StatusBar style={statusBarStyle} animated={true} />
@@ -193,6 +205,12 @@ function AppContent() {
             setUserLocation(loc);
             setCurrentScreen("home");
           }}
+        />
+      ) : activeTab === "profile" && !selectedService && !selectedSubcategory && !selectedCategory ? (
+        <ProfileScreen
+          userLocation={userLocation}
+          onChangeLocation={() => setCurrentScreen("location")}
+          onGoFind={handleGoFind}
         />
       ) : activeTab === "setting" ? (
         <SettingsScreen
@@ -212,6 +230,10 @@ function AppContent() {
           service={selectedService}
           userLocation={userLocation}
           onBack={() => setSelectedService(null)}
+          onRequireLogin={() => {
+            setSelectedService(null);
+            setActiveTab("profile");
+          }}
         />
       ) : selectedSubcategory && selectedCategory ? (
         <SubcategoryDetailScreen
@@ -355,6 +377,33 @@ function AppContent() {
                 />
               </View>
             </TouchableOpacity>
+
+            {/* Profile / Account Tab */}
+            <TouchableOpacity
+              onPress={handleGoProfile}
+              activeOpacity={0.75}
+              className="w-12 h-12 items-center justify-center"
+            >
+              <View
+                className={`w-11 h-11 rounded-full items-center justify-center ${
+                  activeTab === "profile" && !selectedCategory && !selectedService
+                    ? "bg-[#e0b328] shadow-md shadow-amber-500/40"
+                    : "bg-transparent"
+                }`}
+              >
+                <User
+                  size={20}
+                  color={
+                    activeTab === "profile" && !selectedCategory && !selectedService
+                      ? "#0f172a"
+                      : "#94a3b8"
+                  }
+                  strokeWidth={
+                    activeTab === "profile" && !selectedCategory && !selectedService ? 2.6 : 2
+                  }
+                />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -366,7 +415,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

@@ -23,6 +23,7 @@ import { Category, Service, UserLocation } from "../types";
 import { fetchCategories, fetchServices } from "../config/api";
 import { ServiceCard } from "./ServiceCard";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 // Shimmer Skeleton for Category Card (exact geometry match)
 const CategorySkeletonCard: React.FC<{ animStyle: any }> = ({ animStyle }) => (
@@ -95,6 +96,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
+  const { currentUser } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,37 +246,67 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           className="px-6 pt-4 pb-2 flex-row items-center justify-between"
         >
           <View className="flex-1 mr-3">
-            <TouchableOpacity
-              onPress={onChangeLocation}
-              activeOpacity={0.7}
-              className="flex-row items-center space-x-1"
-            >
-              <Text className="text-xs text-slate-400 dark:text-slate-400 font-bold uppercase tracking-wider">
-                My Location Area
-              </Text>
-              {/* <Text className="text-primary text-xs font-bold ml-1">▾</Text> */}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={onChangeLocation}
-              activeOpacity={0.8}
-            >
-              <Text
-                className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight"
-                numberOfLines={1}
-              >
-                {userLocation ? `${userLocation.area}, ${userLocation.city}` : "Select Location"}
-              </Text>
-            </TouchableOpacity>
+            {currentUser ? (
+              <View>
+                <View className="flex-row items-center gap-1 mb-0.5">
+                  <Text className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    Welcome, {currentUser.displayName || currentUser.name || "User"}
+                  </Text>
+                  <Text className="text-xs">👋</Text>
+                </View>
+                <TouchableOpacity onPress={onChangeLocation} activeOpacity={0.8}>
+                  <Text
+                    className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight"
+                    numberOfLines={1}
+                  >
+                    {userLocation ? `${userLocation.area}, ${userLocation.city}` : "Select Location"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <TouchableOpacity
+                  onPress={onChangeLocation}
+                  activeOpacity={0.7}
+                  className="flex-row items-center space-x-1"
+                >
+                  <Text className="text-xs text-slate-400 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    My Location Area
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={onChangeLocation}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight"
+                    numberOfLines={1}
+                  >
+                    {userLocation ? `${userLocation.area}, ${userLocation.city}` : "Select Location"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
-          {/* Notification Bell Badge */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            className="w-11 h-11 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 items-center justify-center relative shadow-2xs"
-          >
-            <Bell size={18} color={isDark ? "#cbd5e1" : "#334155"} />
-            <View className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
-          </TouchableOpacity>
+          {/* Right Icon: User Avatar or Notification Bell Badge */}
+          {currentUser ? (
+            <View className="w-11 h-11 rounded-full bg-gradient-to-tr from-amber-400 to-[#e0b328] bg-[#e0b328] border-2 border-white dark:border-slate-800 items-center justify-center shadow-sm">
+              <Text className="text-sm font-black text-slate-950">
+                {(currentUser.displayName || currentUser.name || "U")
+                  .charAt(0)
+                  .toUpperCase()}
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              className="w-11 h-11 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 items-center justify-center relative shadow-2xs"
+            >
+              <Bell size={18} color={isDark ? "#cbd5e1" : "#334155"} />
+              <View className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
         {/* Search Bar with slide-in animation */}

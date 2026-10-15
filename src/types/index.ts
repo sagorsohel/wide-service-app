@@ -51,3 +51,29 @@ export interface UserLocation {
   updatedAt?: string;
 }
 
+export interface UserProfile {
+  id?: number | string;
+  name?: string;
+  displayName?: string | null;
+  phone?: string;
+  phoneNumber?: string | null;
+  email?: string | null;
+  role?: string;
+  token?: string;
+  firebaseToken?: string | null;
+  photoURL?: string | null;
+  createdAt?: string;
+}
+
+export interface ReviewItem {
+  id: string;
+  serviceId: string | number;
+  userName: string;
+  userAvatar?: string;
+  rating: number;
+  comment: string;
+  date: string;
+  verified?: boolean;
+}
+
+

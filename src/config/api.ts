@@ -1,6 +1,6 @@
 import { Platform, NativeModules } from "react-native";
 import Constants from "expo-constants";
-import { Category, Subcategory, Service, UserLocation } from "../types";
+import { Category, Subcategory, Service, UserLocation, UserProfile } from "../types";
 import { sortServicesByDistance } from "../utils/distance";
 
 /**
@@ -312,3 +312,85 @@ export async function fetchServices(
   }
   return sorted;
 }
+
+/**
+ * Sign in user via backend API
+ */
+export async function loginUser(
+  identifier: string,
+  password: string
+): Promise<{ success: boolean; message?: string; data?: UserProfile }> {
+  try {
+    const res = await smartFetch("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: identifier.trim(), password }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, message: json.message || "Failed to log in" };
+    }
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Network connection error. Please try again." };
+  }
+}
+
+/**
+ * Register new user via backend API
+ */
+export async function registerUser(
+  name: string,
+  phone: string,
+  password: string,
+  email?: string
+): Promise<{ success: boolean; message?: string; data?: UserProfile }> {
+  try {
+    const res = await smartFetch("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        phone: phone.trim(),
+        password,
+        email: email ? email.trim() : undefined,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, message: json.message || "Failed to register" };
+    }
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Network connection error. Please try again." };
+  }
+}
+
+/**
+ * Sign in / register user via Google Token
+ */
+export async function googleLoginUser(
+  idToken: string,
+  profile?: { name?: string; email?: string; photoURL?: string }
+): Promise<{ success: boolean; message?: string; data?: UserProfile }> {
+  try {
+    const res = await smartFetch("/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idToken,
+        name: profile?.name,
+        email: profile?.email,
+        photoURL: profile?.photoURL,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, message: json.message || "Google authentication failed" };
+    }
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Network error during Google login." };
+  }
+}
+
