@@ -10,7 +10,7 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-rean
 import { LogBox, View, ActivityIndicator, StatusBar as RNStatusBar, Platform, TouchableOpacity, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import React, { useState, useEffect } from "react";
-import { Home, Settings, Search } from "lucide-react-native";
+import { LayoutGrid, Settings, Search } from "lucide-react-native";
 import { FindScreen } from "./src/components/FindScreen";
 
 configureReanimatedLogger({
@@ -286,9 +286,14 @@ function AppContent() {
                     : "bg-transparent"
                 }`}
               >
-                <Home
+                <LayoutGrid
                   size={20}
                   color={
+                    activeTab === "home" && !selectedCategory && !selectedService
+                      ? "#0f172a"
+                      : "#94a3b8"
+                  }
+                  fill={
                     activeTab === "home" && !selectedCategory && !selectedService
                       ? "#0f172a"
                       : "#94a3b8"
